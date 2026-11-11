@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JobConnect — Cơ hội mới mỗi ngày</title><link rel="stylesheet" href="style.css"></head>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JobConnect — Cơ hội mới mỗi ngày</title><link rel="stylesheet" href="style.css?v=theme20261111"></head>
 <body>
-<header><a class="brand" href="#/jobs">💼 JobConnect<span>CAREER PLATFORM</span></a>
-<nav aria-label="Điều hướng chính"><button data-page="jobs">Tìm việc làm</button><button data-page="saved">Việc đã lưu <b id="savedCount">0</b></button><button data-page="applications">Đơn ứng tuyển</button><button data-page="cv">Hồ sơ & CV</button><button data-portal="candidate-profile">Thông tin cá nhân</button><button data-portal="recruiter">Nhà tuyển dụng</button><button data-portal="admin">Quản trị</button></nav><div class="header-auth">
+<header><a class="brand" href="index.html" title="Tải lại trang chủ JobConnect">💼 JobConnect<span>CAREER PLATFORM</span></a>
+<nav aria-label="Điều hướng chính"><button data-page="saved">Việc đã lưu <b id="savedCount">0</b></button><button data-page="applications">Đơn ứng tuyển</button><button data-page="cv">Hồ sơ & CV</button><button data-portal="candidate-profile">Thông tin cá nhân</button><button data-portal="recruiter">Nhà tuyển dụng</button><button data-portal="admin">Quản trị</button></nav><div class="header-auth">
   <button id="registerButton" type="button" class="header-register">Đăng ký</button>
   <button id="account" type="button" class="header-login">Đăng nhập</button>
   <div id="userMenu" class="user-menu" hidden>
@@ -15,7 +15,7 @@
       <span>Đăng xuất</span>
     </button>
   </div>
-</div></header>
+</div><button id="themeToggle" type="button" class="theme-toggle" aria-label="Chuyển sang giao diện tối" aria-pressed="false" title="Đổi sáng/tối"><span class="theme-toggle-icon" aria-hidden="true">☾</span><span class="theme-toggle-label">Tối</span></button></header>
 <main>
 <section id="hero" aria-label="Giới thiệu JobConnect">
   <div class="hero-people" aria-hidden="true"><img src="images/hero-reference-people.jpg" alt="" /></div>
@@ -25,7 +25,7 @@
     <p>Kết nối ứng viên với những cơ hội việc làm chất lượng và tìm nơi bạn có thể phát triển.</p>
     <form id="search" autocomplete="off">
       <label><span class="search-label">Từ khóa</span><input id="keyword" placeholder="⌕  Tìm vị trí, kỹ năng hoặc công ty..." aria-label="Tìm vị trí, kỹ năng hoặc công ty"></label>
-      <label><span class="search-label">Địa điểm</span><select id="location" aria-label="Địa điểm"><option value="">⌖  Tất cả địa điểm</option><option>Hà Nội</option><option>TP. Hồ Chí Minh</option><option>Đà Nẵng</option><option>Hải Phòng</option><option>Cần Thơ</option><option>Huế</option><option>Nha Trang</option><option>Bình Dương</option><option>Đồng Nai</option><option>Bắc Ninh</option><option>Quảng Ninh</option><option>Nghệ An</option><option>Long An</option><option>Vũng Tàu</option><option>Đà Lạt</option><option>Phú Quốc</option><option>Biên Hòa</option><option>Remote</option></select></label>
+      <label><span class="search-label">Địa điểm</span><select id="location" aria-label="Địa điểm"><option value="">⌖  Tất cả địa điểm</option><option>Hà Nội</option><option>TP. Hồ Chí Minh</option><option>Đà Nẵng</option><option>Hải Phòng</option><option>Cần Thơ</option><option>Huế</option><option>Nha Trang</option><option>Bình Dương</option><option>Đồng Nai</option><option>Bắc Ninh</option><option>Quảng Ninh</option><option>Nghệ An</option><option>Long An</option><option>Vũng Tàu</option><option>Đà Lạt</option><option>Phú Quốc</option><option>Biên Hòa</option><option>Thái Nguyên</option><option>Hải Dương</option><option>Bình Định</option></select></label>
       <button class="primary" type="submit">⌕ &nbsp; Tìm việc ngay</button>
     </form>
   </div>
@@ -60,4 +60,4 @@
 <dialog id="detailDialog"><button class="close" data-close aria-label="Đóng">×</button><div id="detailBody"></div></dialog>
 <dialog id="applyDialog"><form id="applyForm"><button type="button" class="close" data-close aria-label="Đóng">×</button><h2>Nộp đơn ứng tuyển</h2><p id="applyTitle"></p><label>Chọn CV PDF<select id="cvSelect" required></select></label><label>Thư giới thiệu<textarea id="letter" rows="5" maxlength="3000" placeholder="Chia sẻ lý do bạn phù hợp…"></textarea></label><button class="primary">Gửi đơn ứng tuyển</button></form></dialog>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="app.js"></script><script src="portal.js"></script></body></html>
+<script src="theme.js?v=themefix20261111"></script><script src="app.js?v=navy20261111"></script><script src="portal.js?v=navy20261111"></script></body></html>

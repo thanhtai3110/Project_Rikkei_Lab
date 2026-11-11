@@ -451,3 +451,255 @@ footer{max-width:1220px!important;margin:35px auto 0!important;padding:24px 10px
 .card:hover .logo{transform:translateY(-2px);transition:transform .2s ease}
 #location{min-width:0}
 @media(max-width:650px){.card .logo{width:50px;height:50px}}
+
+/* ============================================================
+   BO SUNG CSS THEO YEU CAU - GIAO DIEN GOC GIU NGUYEN
+   Khong sua HTML, app.js, portal.js hay logic cua 3 vai tro.
+   ============================================================ */
+
+/* Logo/chữ viết tắt công ty nằm chính giữa khung. */
+#jobList .logo, .card .logo {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  flex-shrink: 0;
+}
+#jobList .logo img, .card .logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  margin: auto;
+}
+
+/* Banner mới: hình ở bên phải, không chồng vào ô tìm kiếm,
+   giữ đủ hai nhân vật và các biểu tượng liên quan tuyển dụng. */
+#hero {
+  min-height: 480px !important;
+  padding-bottom: 38px !important;
+}
+#hero .hero-people {
+  position: absolute;
+  right: max(22px, calc((100vw - 1450px) / 2));
+  top: 50%;
+  bottom: auto;
+  width: min(44%, 680px);
+  height: auto;
+  aspect-ratio: 16 / 9;
+  transform: translateY(-50%);
+  z-index: 1;
+  clip-path: none;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #d8e9fc;
+  box-shadow: 0 12px 28px rgba(10, 24, 90, .14);
+}
+#hero .hero-people::before { display: none; }
+#hero .hero-people img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+#hero .hero-copy { position: relative; z-index: 2; width: min(625px, 51%); }
+#hero #search {
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-top: 29px !important;
+}
+
+/* Ô địa điểm dùng select chuẩn của trình duyệt: hiển thị rõ,
+   không thay đổi sự kiện lọc hay dữ liệu địa điểm trong JavaScript. */
+#search #location {
+  display: block;
+  width: 100% !important;
+  min-width: 0;
+  cursor: pointer;
+  color: #18265a !important;
+  background-color: #fff !important;
+}
+
+/* Trên màn hình nhỏ, ảnh chuyển xuống dưới, không che nội dung. */
+@media (max-width: 1100px) {
+  #hero .hero-copy { width: min(620px, 57%); }
+  #hero .hero-people { width: 40%; right: 20px; }
+}
+@media (max-width: 800px) {
+  #hero { min-height: 0 !important; }
+  #hero .hero-copy { width: 100%; }
+  #hero .hero-people {
+    position: relative;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    transform: none;
+    opacity: 1;
+    margin-top: 24px;
+    border-radius: 16px;
+  }
+  #hero #search { width: 100% !important; }
+}
+
+
+/* =====================================================
+   JOBCONNECT - PHOI MAU TINH TE, TACH BANNER VA THONG TIN
+   Bo sung CSS, khong doi cau truc va chuc nang.
+   Navy #172D4D - Cobalt #3565C8 - Teal #0F8995.
+   ===================================================== */
+:root {--ink:#192D49;--blue:#3565C8;--blue-dark:#244EAD;--teal:#0F8995;--violet:#6175AE;--page:#F7F9FC;--soft:#EEF4FB;--line:#E4EAF3}
+body {background:#F7F9FC!important;color:#192D49!important}
+header {background:rgba(255,255,255,.97)!important;border-bottom:1px solid #E5EAF1!important;box-shadow:0 3px 16px rgba(24,46,78,.045)!important}
+.brand {color:#1B3359!important}
+.brand span {color:#74839B!important}
+nav button {color:#465A77!important}
+nav button.active,nav button:hover,nav button[data-portal].active {background:#EAF0FA!important;color:#2F5BB6!important}
+.header-auth .header-register{background:#F1F5FB!important;color:#2C528C!important;border-color:#DBE5F3!important}
+.header-auth #account,.header-auth .header-login {background:#3565C8!important;color:#fff!important}
+.user-avatar {background:linear-gradient(140deg,#3160A9,#168A98)!important}
+.user-role {color:#39728A!important}
+.user-name {color:#203A5D!important}
+#hero {background:linear-gradient(112deg,#162C4B 0%,#244878 58%,#376A94 100%)!important}
+#hero::before {border-color:rgba(159,200,235,.14)!important;box-shadow:0 0 0 75px rgba(168,201,240,.025),0 0 0 170px rgba(168,201,240,.025)!important}
+#hero::after {background:radial-gradient(circle,rgba(63,170,187,.12),transparent 72%)!important}
+#hero .eyebrow {background:rgba(255,255,255,.13)!important;border:1px solid rgba(255,255,255,.14)!important;color:#E8F4FF!important}
+#hero h1 em {color:#9BE1EB!important;-webkit-text-fill-color:#9BE1EB!important}
+#hero p {color:#E4ECF8!important}
+#search {border-color:#DCE5F1!important;box-shadow:0 12px 28px rgba(10,33,68,.18)!important}
+#search>button,#search .primary {background:#3565C8!important;color:white!important}
+#search>button:hover {background:#2855B2!important}
+#search input,#search select {color:#243B60!important}
+#search #location {color:#243B60!important}
+.hero-people {box-shadow:0 16px 34px rgba(4,21,47,.23)!important;border:1px solid rgba(255,255,255,.18)!important}
+.metric-card {background:rgba(255,255,255,.09)!important;border-color:rgba(222,237,251,.17)!important}
+.metric-card strong {color:#FFF!important}
+.metric-card span {color:#D8E5F6!important}
+/* Hai khoi tach khoi nhau, khong cham canh banner. */
+.discovery {padding-top:30px!important;padding-bottom:10px!important}
+.discovery .trust-strip {margin:0 0 30px!important;background:#FFFFFF!important;border:1px solid #DFE7F1!important;border-radius:18px!important;box-shadow:0 9px 26px rgba(26,49,82,.055)!important}
+.trust-strip>div {border-right-color:#E6EDF5!important}
+.trust-icon {background:#E8F1FD!important;color:#3262AE!important}
+.trust-strip>div:nth-child(2) .trust-icon {background:#E7F5F4!important;color:#187E82!important}
+.trust-strip>div:nth-child(3) .trust-icon {background:#F0F2FA!important;color:#6573AC!important}
+.trust-strip>div:nth-child(4) .trust-icon {background:#E7F4EB!important;color:#33835E!important}
+.trust-strip strong {color:#213B5E!important}
+.trust-strip small {color:#74839B!important}
+.explore-head {margin-top:24px!important}
+.explore-head h2,#workspace .section-head h2 {color:#1C365A!important}
+.explore-head h2::before,#workspace .section-head h2::before {background:#3565C8!important}
+.text-link {color:#3565C8!important}
+/* Danh muc: cung he mau diu, khong loe loet */
+.industry-card {background:#EAF2FC!important}
+.industry-card:nth-child(2) {background:#EDF3FA!important}
+.industry-card:nth-child(3) {background:#EAF6F2!important}
+.industry-card:nth-child(4) {background:#EFF1FB!important}
+.industry-card:nth-child(5) {background:#F7F4EB!important}
+.industry-card:nth-child(6) {background:#F1EFF9!important}
+.industry-card:nth-child(7) {background:#EAF4F7!important}
+.industry-card:nth-child(8) {background:#EEF1F5!important}
+.industry-card strong {color:#283E5C!important}
+#jobList .card {border-color:#E3EAF3!important;box-shadow:0 6px 18px rgba(27,51,84,.045)!important}
+#jobList .card h3 {color:#1D3555!important}
+#jobList .card:hover {border-color:#BFD0E9!important;box-shadow:0 11px 26px rgba(27,51,84,.085)!important}
+#jobList .card-bottom button {background:#EDF3FD!important;color:#315DB3!important;border-color:#DCE7F8!important}
+#jobList .logo {background:#EAF2FB!important;color:#3565C8!important}
+aside {border-color:#E4EAF3!important}
+aside h3 {color:#213A5B!important}
+aside h3::before {background:#EAF2FD!important;color:#3565C8!important}
+aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:#DDE7F7!important}
+.portal-actions button.active {background:#EAF0FA!important;color:#3561B0!important}
+.portal-cards>div {background:#EAF2FC!important;color:#3565C8!important}
+.portal-cards>div:nth-child(2) {background:#EEF2FB!important;color:#536AA5!important}
+.portal-cards>div:nth-child(3) {background:#E9F5F2!important;color:#168477!important}
+.portal-cards>div:nth-child(4) {background:#F7F3EA!important;color:#927441!important}
+.primary {background:#3565C8!important;color:#fff!important}
+.primary:hover {background:#2855B2!important;color:#fff!important}
+@media(max-width:1180px){.discovery{padding-top:24px!important}}
+@media(max-width:600px){.discovery{padding-top:18px!important}.discovery .trust-strip{border-radius:14px!important;margin-bottom:24px!important}}
+
+
+/* Logo doanh nghiệp dạng chữ cái — khôi phục đúng mẫu người dùng chọn. */
+#jobList .card .logo {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 52px !important;
+  height: 52px !important;
+  flex: 0 0 52px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 13px !important;
+  background: #e8f6f0 !important;
+  overflow: hidden;
+  box-shadow: none !important;
+}
+#jobList .card .logo .company-initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #f7fffc;
+  color: #0f877b;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 800;
+  text-align: center;
+}
+
+
+/* === Nút sáng/tối theo ảnh tham chiếu; chỉ bổ sung ở cuối CSS gốc === */
+#themeToggle.theme-toggle {
+  display:inline-flex!important;align-items:center;justify-content:center;gap:9px;
+  flex:0 0 auto;min-width:103px;min-height:46px;padding:9px 17px;
+  border:1px solid #dae4f2!important;border-radius:999px!important;
+  color:#31496c!important;background:#f6f8fc!important;
+  font-size:14px!important;font-weight:700!important;white-space:nowrap;
+  box-shadow:none!important;transition:background .2s,color .2s,border-color .2s!important;
+}
+#themeToggle.theme-toggle:hover{background:#eaf1fa!important;border-color:#c4d4ec!important;transform:none!important}
+#themeToggle .theme-toggle-icon{font-size:20px;line-height:1;font-weight:500}
+#themeToggle .theme-toggle-label{line-height:1.1}
+@media(max-width:600px){#themeToggle.theme-toggle{min-height:40px;min-width:76px;padding:7px 11px;font-size:12px!important;gap:5px}}
+/* Chế độ tối: giữ nguyên bố cục và các thành phần nghiệp vụ */
+html[data-theme="dark"]{color-scheme:dark;--ink:#e7eef9;--muted:#a5b4cb;--line:#344661;--page:#101a2d;--paper:#1d2a3f;--soft:#223450}
+html[data-theme="dark"] body{background:#101a2d!important;color:#e7eef9!important}
+html[data-theme="dark"] header{background:#19263b!important;border-bottom-color:#33435e!important}
+html[data-theme="dark"] .brand,html[data-theme="dark"] .user-name{color:#e8f0ff!important}
+html[data-theme="dark"] .brand span,html[data-theme="dark"] .user-role{color:#a7b8d0!important}
+html[data-theme="dark"] nav button{color:#c9d6e9!important}
+html[data-theme="dark"] nav button:hover,html[data-theme="dark"] nav button.active{background:#293d5d!important;color:#9fcaff!important}
+html[data-theme="dark"] #themeToggle.theme-toggle{background:#293b57!important;color:#f5f8ff!important;border-color:#485c7a!important}
+html[data-theme="dark"] #themeToggle.theme-toggle:hover{background:#354b6c!important}
+html[data-theme="dark"] .discovery .trust-strip,html[data-theme="dark"] #jobList .card,
+html[data-theme="dark"] aside,html[data-theme="dark"] .panel,html[data-theme="dark"] dialog,
+html[data-theme="dark"] #cvView .panel{background:#1c2b42!important;border-color:#344761!important;color:#e4eeff!important}
+html[data-theme="dark"] .trust-strip strong,html[data-theme="dark"] .explore-head h2,
+html[data-theme="dark"] #workspace .section-head h2,html[data-theme="dark"] #jobList .card h3,
+html[data-theme="dark"] aside h3,html[data-theme="dark"] h2,html[data-theme="dark"] h3,
+html[data-theme="dark"] .industry-card strong{color:#edf4ff!important}
+html[data-theme="dark"] .trust-strip small,html[data-theme="dark"] .company,
+html[data-theme="dark"] .muted,html[data-theme="dark"] #resultCount,
+html[data-theme="dark"] .card-bottom small{color:#a9bad1!important}
+html[data-theme="dark"] .industry-card,html[data-theme="dark"] .industry-card:nth-child(n){background:#273b58!important;border-color:#354f71!important}
+html[data-theme="dark"] .tag:not(.salary){background:#293c58!important;color:#c4d5ec!important}
+html[data-theme="dark"] .portal-table,html[data-theme="dark"] .portal-table td,
+html[data-theme="dark"] .portal-table th{background:#1c2b42!important;border-color:#394a64!important;color:#e7eef9!important}
+html[data-theme="dark"] .portal-actions{background:#26364d!important}
+html[data-theme="dark"] .portal-actions button{color:#bed0e7!important}
+html[data-theme="dark"] .portal-actions button.active{background:#345279!important;color:#fff!important}
+html[data-theme="dark"] .portal-cards>div,html[data-theme="dark"] .portal-cards>div:nth-child(n){background:#263a56!important;color:#cce1ff!important;border-color:#405473!important}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#263751!important;color:#f0f6ff!important;border-color:#435675!important}
+html[data-theme="dark"] #search input,html[data-theme="dark"] #search select{background:#fff!important;color:#233b60!important}
+html[data-theme="dark"] label{color:#d1ddec!important}
+html[data-theme="dark"] #jobList .card-bottom button,html[data-theme="dark"] aside #reset{background:#2b4669!important;color:#d9e9ff!important;border-color:#476185!important}
+html[data-theme="dark"] .header-auth .header-register{background:#2c3d58!important;color:#dceaff!important;border-color:#435777!important}
+html[data-theme="dark"] footer{color:#aebfd4!important}

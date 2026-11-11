@@ -100,7 +100,7 @@ const jobs = [
 
         company: 'CloudBase',
 
-        location: 'Remote',
+        location: 'Hà Nội',
 
         type: 'Toàn thời gian',
 
@@ -152,7 +152,7 @@ const jobs = [
 
         company: 'Monday Creative',
 
-        location: 'Remote',
+        location: 'TP. Hồ Chí Minh',
 
         type: 'Bán thời gian',
 
@@ -417,7 +417,7 @@ jobs.push(...[
     "id": 21,
     "title": "Kỹ sư DevOps",
     "company": "CloudOrbit",
-    "location": "Remote",
+    "location": "Thái Nguyên",
     "type": "Toàn thời gian",
     "min": 28,
     "max": 48,
@@ -587,7 +587,7 @@ jobs.push(...[
     "id": 31,
     "title": "Chuyên viên Phân tích nghiệp vụ",
     "company": "ProductWise",
-    "location": "Remote",
+    "location": "Hải Dương",
     "type": "Toàn thời gian",
     "min": 22,
     "max": 36,
@@ -706,7 +706,7 @@ jobs.push(...[
     "id": 38,
     "title": "Data Engineer",
     "company": "VectorCloud",
-    "location": "Remote",
+    "location": "Bình Định",
     "type": "Toàn thời gian",
     "min": 27,
     "max": 45,
@@ -991,7 +991,7 @@ function renderJobs() {
 
     list.sort((a, b) => $('#sort').value === 'salary' ? b.max - a.max : b.date.localeCompare(a.date));
 
-    $('#jobList').innerHTML = list.map(j => `<article class="card"><div class="logo" aria-hidden="true"><img src="${companyLogo(j.company)}" alt="" loading="lazy"></div><div class="card-body"><h3>${esc(j.title)}</h3><div class="company">${esc(j.company)} · ${j.location}</div><div class="tags"><span class="tag salary">${j.min}–${j.max} triệu</span><span class="tag">${j.type}</span>${j.skills.map(s => `<span class="tag">${s}</span>`).join('')}</div><div class="card-bottom"><small>${j.open ? 'Đang tuyển' : 'Đã đóng'} · ${j.date}</small><button data-detail="${j.id}">Xem chi tiết →</button></div></div><button class="save" data-save="${j.id}" aria-label="${account()?.saved.includes(j.id) ? 'Bỏ lưu' : 'Lưu'} ${esc(j.title)}" aria-pressed="${!!account()?.saved.includes(j.id)}">${account()?.saved.includes(j.id) ? '♥' : '♡'}</button></article>`).join('') || empty('Chưa có việc làm phù hợp với bộ lọc.');
+    $('#jobList').innerHTML = list.map(j => `<article class="card"><div class="logo" aria-hidden="true"><span class="company-initial">${esc(String(j.company || "?").trim().charAt(0).toLocaleUpperCase("vi"))}</span></div><div class="card-body"><h3>${esc(j.title)}</h3><div class="company">${esc(j.company)} · ${j.location}</div><div class="tags"><span class="tag salary">${j.min}–${j.max} triệu</span><span class="tag">${j.type}</span>${j.skills.map(s => `<span class="tag">${s}</span>`).join('')}</div><div class="card-bottom"><small>${j.open ? 'Đang tuyển' : 'Đã đóng'} · ${j.date}</small><button data-detail="${j.id}">Xem chi tiết →</button></div></div><button class="save" data-save="${j.id}" aria-label="${account()?.saved.includes(j.id) ? 'Bỏ lưu' : 'Lưu'} ${esc(j.title)}" aria-pressed="${!!account()?.saved.includes(j.id)}">${account()?.saved.includes(j.id) ? '♥' : '♡'}</button></article>`).join('') || empty('Chưa có việc làm phù hợp với bộ lọc.');
 
     $('#resultCount').textContent = `${list.length} công việc · Lọc cục bộ ${Math.ceil(performance.now() - start)} ms`
 
