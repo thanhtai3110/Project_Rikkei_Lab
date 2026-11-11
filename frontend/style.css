@@ -703,3 +703,95 @@ html[data-theme="dark"] label{color:#d1ddec!important}
 html[data-theme="dark"] #jobList .card-bottom button,html[data-theme="dark"] aside #reset{background:#2b4669!important;color:#d9e9ff!important;border-color:#476185!important}
 html[data-theme="dark"] .header-auth .header-register{background:#2c3d58!important;color:#dceaff!important;border-color:#435777!important}
 html[data-theme="dark"] footer{color:#aebfd4!important}
+
+/* FIX 2026-11-11: Banner responsive trên màn hình lớn.
+   Giữ nguyên chức năng; 2 cột thực, ảnh không đè lên nội dung. */
+main {
+  width: 100% !important;
+  max-width: none !important;
+}
+#hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr) !important;
+  gap: clamp(30px, 3.8vw, 76px) !important;
+  align-items: center !important;
+  min-height: 490px !important;
+  padding: 48px max(32px, calc((100vw - 1420px) / 2)) !important;
+  overflow: hidden !important;
+}
+#hero .hero-copy {
+  position: relative !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  z-index: 2 !important;
+}
+#hero .hero-people {
+  position: relative !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  width: 100% !important;
+  max-width: 760px !important;
+  height: auto !important;
+  aspect-ratio: 16 / 9 !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  clip-path: none !important;
+  z-index: 1 !important;
+  overflow: hidden !important;
+  border-radius: 20px !important;
+}
+#hero .hero-people img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+#hero h1 {
+  font-size: clamp(34px, 3.4vw, 58px) !important;
+  overflow-wrap: normal !important;
+}
+#hero #search {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+#hero #search label { min-width: 0 !important; }
+#hero #search input,
+#hero #search select { min-width: 0 !important; }
+@media (max-width: 1060px) {
+  #hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, .88fr) !important;
+    gap: 24px !important;
+    padding: 38px 28px !important;
+  }
+  #hero h1 { font-size: clamp(32px, 4vw, 45px) !important; }
+  #hero .hero-copy { width: 100% !important; }
+  #hero .hero-people { width: 100% !important; right: auto !important; }
+}
+@media (max-width: 800px) {
+  #hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 24px !important;
+    padding: 30px 22px !important;
+    min-height: 0 !important;
+  }
+  #hero .hero-copy { grid-column: 1 !important; grid-row: 1 !important; }
+  #hero .hero-people {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+  #hero #search { width: 100% !important; }
+}
