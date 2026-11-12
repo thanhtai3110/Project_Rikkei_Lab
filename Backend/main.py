@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, Depends,HTTPException
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -8,12 +8,19 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 
-
 from database import get_db
-from models import User
-from schemas import RegisterRequest
+from models import Job, User
 from schemas import RegisterRequest, LoginRequest
+from schemas import (
+    CandidateProfileResponse,
+    CandidateProfileUpdate,
+    CompanyProfileResponse,
+    CompanyProfileUpdate,
+    JobCreate,
+    JobResponse,
+)
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+
 
 
 app = FastAPI()
@@ -78,7 +85,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         full_name=data.full_name,
         email=data.email,
         password=hashed_password,
-        role="candidate"
+        role=data.role
     )
 
     db.add(new_user)
@@ -179,6 +186,113 @@ def get_current_user(
 
     return user
 
+def get_current_candidate(
+    user: User = Depends(get_current_user)
+) -> User:
+    if user.role != "candidate":
+        raise HTTPException(
+            status_code=403,
+            detail="Chỉ ứng viên mới có thể truy cập hồ sơ này"
+        )
+
+    return user
+
+@app.get(
+    "/candidate/profile",
+    response_model=CandidateProfileResponse
+)
+def get_candidate_profile(
+    user: User = Depends(get_current_candidate)
+) -> User:
+    return user
+
+@app.patch(
+    "/candidate/profile",
+    response_model=CandidateProfileResponse
+)
+def update_candidate_profile(
+    data: CandidateProfileUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_candidate)
+) -> User:
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+def get_current_recruiter(
+    user: User = Depends(get_current_user)
+) -> User:
+    if user.role != "recruiter":
+        raise HTTPException(
+            status_code=403,
+            detail="Chỉ nhà tuyển dụng mới có thể truy cập hồ sơ doanh nghiệp"
+        )
+
+    return user
+
+@app.get(
+    "/company/profile",
+    response_model=CompanyProfileResponse
+)
+def get_company_profile(
+    user: User = Depends(get_current_recruiter)
+) -> User:
+    return user
+
+@app.patch(
+    "/company/profile",
+    response_model=CompanyProfileResponse
+)
+def update_company_profile(
+    data: CompanyProfileUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_recruiter)
+) -> User:
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+@app.post(
+    "/api/jobs",
+    status_code=201,
+    response_model=JobResponse,
+)
+def create_job(
+    data: JobCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_recruiter),
+) -> Job:
+    if not user.company_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Hãy cập nhật tên doanh nghiệp trước khi tạo tin tuyển dụng"
+        )
+
+    job = Job(
+        recruiter_id=user.user_id,
+        title=data.title,
+        company=user.company_name,
+        location=data.location,
+        job_type=data.type,
+        skills=data.skills,
+        min_salary=data.min,
+        max_salary=data.max,
+        description=data.description,
+        status="pending",
+        open=False,
+    )
+
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    return job
+
 @app.get("/auth/me")
 def get_me(user: User = Depends(get_current_user)):
     return {
@@ -187,5 +301,3 @@ def get_me(user: User = Depends(get_current_user)):
         "email": user.email,
         "role": user.role
     }
-
-
