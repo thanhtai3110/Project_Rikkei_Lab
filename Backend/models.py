@@ -1,6 +1,19 @@
 from datetime import date
 
-from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from database import Base
 
 class User(Base):
@@ -42,3 +55,30 @@ class Job(Base):
     date = Column(Date, nullable=False, default=date.today)
     open = Column(Boolean, nullable=False, default=False)
     status = Column(String(20), nullable=False, default="pending")
+
+
+class Application(Base):
+    __tablename__ = "applications"
+    __table_args__ = (
+        UniqueConstraint(
+            "candidate_id",
+            "job_id",
+            name="uq_applications_candidate_job",
+        ),
+    )
+
+    application_id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(
+        Integer,
+        ForeignKey("users.user_id"),
+        nullable=False,
+        index=True,
+    )
+    job_id = Column(
+        Integer,
+        ForeignKey("jobs.job_id"),
+        nullable=False,
+        index=True,
+    )
+    status = Column(String(20), nullable=False, default="pending")
+    applied_at = Column(DateTime, nullable=False, server_default=func.now())

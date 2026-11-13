@@ -1,7 +1,7 @@
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import cast, or_, select, String
 from sqlalchemy.exc import IntegrityError
 import bcrypt
 from datetime import datetime, timedelta, timezone
@@ -9,11 +9,14 @@ from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 
 from database import get_db
-from models import Job, User
+from models import Application, Job, User
 from schemas import RegisterRequest, LoginRequest
 from schemas import (
     CandidateProfileResponse,
     CandidateProfileUpdate,
+    ApplicationCreate,
+    ApplicationResponse,
+    ApplicationStatusUpdate,
     CompanyProfileResponse,
     CompanyProfileUpdate,
     JobCreate,
@@ -233,6 +236,17 @@ def get_current_recruiter(
 
     return user
 
+def get_current_admin(
+    user: User = Depends(get_current_user)
+) -> User:
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Chỉ quản trị viên mới có thể duyệt tin tuyển dụng"
+        )
+
+    return user
+
 @app.get(
     "/company/profile",
     response_model=CompanyProfileResponse
@@ -257,6 +271,265 @@ def update_company_profile(
     db.commit()
     db.refresh(user)
     return user
+
+@app.get(
+    "/api/jobs",
+    response_model=list[JobResponse],
+)
+def get_jobs(
+    keyword: str | None = Query(default=None, min_length=1),
+    location: str | None = Query(default=None, min_length=1),
+    min_salary: float | None = Query(default=None, ge=0),
+    max_salary: float | None = Query(default=None, ge=0),
+    db: Session = Depends(get_db),
+) -> list[Job]:
+    if min_salary is not None and max_salary is not None and min_salary > max_salary:
+        raise HTTPException(
+            status_code=422,
+            detail="Lương tối thiểu không được lớn hơn lương tối đa"
+        )
+
+    statement = select(Job).where(Job.status == "approved")
+
+    if keyword and keyword.strip():
+        pattern = f"%{keyword.strip()}%"
+        statement = statement.where(
+            or_(
+                Job.title.ilike(pattern),
+                Job.company.ilike(pattern),
+                Job.description.ilike(pattern),
+                cast(Job.skills, String).ilike(pattern),
+            )
+        )
+
+    if location and location.strip():
+        statement = statement.where(
+            Job.location.ilike(f"%{location.strip()}%")
+        )
+
+    if min_salary is not None:
+        statement = statement.where(Job.max_salary >= min_salary)
+
+    if max_salary is not None:
+        statement = statement.where(Job.min_salary <= max_salary)
+
+    statement = statement.order_by(Job.date.desc(), Job.job_id.desc())
+    return db.execute(statement).scalars().all()
+
+@app.get(
+    "/api/admin/jobs/pending",
+    response_model=list[JobResponse],
+)
+def get_pending_jobs(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_admin),
+) -> list[Job]:
+    statement = (
+        select(Job)
+        .where(Job.status == "pending")
+        .order_by(Job.date.asc(), Job.job_id.asc())
+    )
+    return db.execute(statement).scalars().all()
+
+@app.patch(
+    "/api/admin/jobs/{id}/approve",
+    response_model=JobResponse,
+)
+def approve_job(
+    id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_admin),
+) -> Job:
+    job = db.execute(
+        select(Job).where(Job.job_id == id)
+    ).scalar_one_or_none()
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy tin tuyển dụng"
+        )
+
+    if job.status != "pending":
+        raise HTTPException(
+            status_code=409,
+            detail="Chỉ có thể duyệt tin đang chờ xét duyệt"
+        )
+
+    job.status = "approved"
+    db.commit()
+    db.refresh(job)
+    return job
+
+@app.get(
+    "/api/jobs/{id}",
+    response_model=JobResponse,
+)
+def get_job(
+    id: int,
+    db: Session = Depends(get_db),
+) -> Job:
+    job = db.execute(
+        select(Job).where(
+            Job.job_id == id,
+            Job.status == "approved",
+        )
+    ).scalar_one_or_none()
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy tin tuyển dụng"
+        )
+
+    return job
+
+@app.get(
+    "/api/applications/my",
+    response_model=list[ApplicationResponse],
+)
+def get_my_applications(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_candidate),
+) -> list[Application]:
+    statement = (
+        select(Application)
+        .where(Application.candidate_id == user.user_id)
+        .order_by(Application.applied_at.desc(), Application.application_id.desc())
+    )
+    return db.execute(statement).scalars().all()
+
+@app.get(
+    "/api/jobs/{job_id}/applications",
+    response_model=list[ApplicationResponse],
+)
+def get_job_applications(
+    job_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_recruiter),
+) -> list[Application]:
+    job = db.execute(
+        select(Job).where(Job.job_id == job_id)
+    ).scalar_one_or_none()
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy tin tuyển dụng"
+        )
+
+    if job.recruiter_id != user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Bạn không có quyền xem đơn ứng tuyển của tin này"
+        )
+
+    statement = (
+        select(Application)
+        .where(Application.job_id == job_id)
+        .order_by(Application.applied_at.desc(), Application.application_id.desc())
+    )
+    return db.execute(statement).scalars().all()
+
+@app.patch(
+    "/api/applications/{id}/status",
+    response_model=ApplicationResponse,
+)
+def update_application_status(
+    id: int,
+    data: ApplicationStatusUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_recruiter),
+) -> Application:
+    application = db.execute(
+        select(Application).where(Application.application_id == id)
+    ).scalar_one_or_none()
+
+    if application is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy đơn ứng tuyển"
+        )
+
+    job = db.execute(
+        select(Job).where(Job.job_id == application.job_id)
+    ).scalar_one_or_none()
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy tin tuyển dụng"
+        )
+
+    if job.recruiter_id != user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Bạn không có quyền xét duyệt đơn ứng tuyển này"
+        )
+
+    application.status = data.status
+    db.commit()
+    db.refresh(application)
+    return application
+
+@app.post(
+    "/api/applications",
+    status_code=201,
+    response_model=ApplicationResponse,
+)
+def create_application(
+    data: ApplicationCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_candidate),
+) -> Application:
+    job = db.execute(
+        select(Job).where(Job.job_id == data.job_id)
+    ).scalar_one_or_none()
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy tin tuyển dụng"
+        )
+
+    existing_application = db.execute(
+        select(Application).where(
+            Application.candidate_id == user.user_id,
+            Application.job_id == data.job_id,
+        )
+    ).scalar_one_or_none()
+
+    if existing_application is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Bạn đã nộp đơn cho tin tuyển dụng này"
+        )
+
+    application = Application(
+        candidate_id=user.user_id,
+        job_id=data.job_id,
+    )
+    db.add(application)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        duplicate_application = db.execute(
+            select(Application.application_id).where(
+                Application.candidate_id == user.user_id,
+                Application.job_id == data.job_id,
+            )
+        ).scalar_one_or_none()
+        if duplicate_application is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="Bạn đã nộp đơn cho tin tuyển dụng này"
+            )
+        raise
+
+    db.refresh(application)
+    return application
 
 @app.post(
     "/api/jobs",
@@ -289,6 +562,44 @@ def create_job(
     )
 
     db.add(job)
+    db.commit()
+    db.refresh(job)
+    return job
+
+@app.put(
+    "/api/jobs/{id}",
+    response_model=JobResponse,
+)
+def update_job(
+    id: int,
+    data: JobCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_recruiter),
+) -> Job:
+    job = db.execute(
+        select(Job).where(Job.job_id == id)
+    ).scalar_one_or_none()
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy tin tuyển dụng"
+        )
+
+    if job.recruiter_id != user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Bạn không có quyền cập nhật tin tuyển dụng này"
+        )
+
+    job.title = data.title
+    job.location = data.location
+    job.job_type = data.type
+    job.skills = data.skills
+    job.min_salary = data.min
+    job.max_salary = data.max
+    job.description = data.description
+
     db.commit()
     db.refresh(job)
     return job
