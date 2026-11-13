@@ -293,6 +293,44 @@ def create_job(
     db.refresh(job)
     return job
 
+@app.put(
+    "/api/jobs/{id}",
+    response_model=JobResponse,
+)
+def update_job(
+    id: int,
+    data: JobCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_recruiter),
+) -> Job:
+    job = db.execute(
+        select(Job).where(Job.job_id == id)
+    ).scalar_one_or_none()
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy tin tuyển dụng"
+        )
+
+    if job.recruiter_id != user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Bạn không có quyền cập nhật tin tuyển dụng này"
+        )
+
+    job.title = data.title
+    job.location = data.location
+    job.job_type = data.type
+    job.skills = data.skills
+    job.min_salary = data.min
+    job.max_salary = data.max
+    job.description = data.description
+
+    db.commit()
+    db.refresh(job)
+    return job
+
 @app.get("/auth/me")
 def get_me(user: User = Depends(get_current_user)):
     return {
