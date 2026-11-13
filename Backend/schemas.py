@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import (
@@ -130,3 +130,25 @@ class JobResponse(BaseModel):
     date: date
     open: bool
     status: str
+
+
+class ApplicationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_id: int = Field(gt=0)
+
+
+class ApplicationStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["approved", "rejected"]
+
+
+class ApplicationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(validation_alias="application_id")
+    candidate_id: int
+    job_id: int
+    status: str
+    applied_at: datetime
