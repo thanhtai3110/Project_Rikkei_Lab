@@ -1,178 +1,80 @@
 'use strict';
-
-
-
 const $ = s => document.querySelector(s);
-
-
-
 const statuses = { submitted: 'Đã nộp', reviewing: 'Đang xem xét', interviewed: 'Đã phỏng vấn', accepted: 'Được chấp nhận', rejected: 'Bị từ chối', withdrawn: 'Đã rút' };
-
-
-
 const jobs = [
-
-
-
     {
-
         id: 1,
-
         title: 'Frontend Developer (ReactJS)',
-
         company: 'TechNova Studio',
-
         location: 'Hà Nội',
-
         type: 'Toàn thời gian',
-
         min: 18,
-
         max: 30,
-
         skills: ['React', 'JavaScript', 'Tailwind'],
-
         date: '2026-11-03',
-
         open: true
-
     },
-
-
-
     {
-
         id: 2,
-
         title: 'UI/UX Designer',
-
         company: 'Pixel & Co.',
-
         location: 'TP. Hồ Chí Minh',
-
         type: 'Toàn thời gian',
-
         min: 15,
-
         max: 25,
-
         skills: ['Figma', 'UI/UX', 'Design System'],
-
         date: '2026-11-02',
-
         open: true
-
     },
-
-
-
     {
-
         id: 3,
-
         title: 'Digital Marketing Executive',
-
         company: 'Green Growth',
-
         location: 'Đà Nẵng',
-
         type: 'Toàn thời gian',
-
         min: 12,
-
         max: 20,
-
         skills: ['SEO', 'Content', 'Analytics'],
-
         date: '2026-11-01',
-
         open: true
-
     },
-
-
-
     {
-
         id: 4,
-
         title: 'Backend Developer (Node.js)',
-
         company: 'CloudBase',
-
         location: 'Hà Nội',
-
         type: 'Toàn thời gian',
-
         min: 25,
-
         max: 40,
-
         skills: ['Node.js', 'MySQL', 'REST API'],
-
         date: '2026-10-31',
-
         open: true
-
     },
-
-
-
     {
-
         id: 5,
-
         title: 'Frontend Intern',
-
         company: 'TechNova Studio',
-
         location: 'Hà Nội',
-
         type: 'Thực tập',
-
         min: 3,
-
         max: 6,
-
         skills: ['HTML', 'CSS', 'JavaScript'],
-
         date: '2026-10-30',
-
         open: true
-
     },
-
-
-
     {
-
         id: 6,
-
         title: 'Content Designer',
-
         company: 'Monday Creative',
-
         location: 'TP. Hồ Chí Minh',
-
         type: 'Bán thời gian',
-
         min: 7,
-
         max: 12,
-
         skills: ['Content', 'Canva', 'Social'],
-
         date: '2026-10-29',
-
         open: false
-
     }
-
 ];
-
-
-
-
 // Các tin mẫu bổ sung để thử giao diện; không phải tin tuyển dụng thật.
 jobs.push(...[
   {
@@ -720,121 +622,54 @@ jobs.push(...[
     "status": "approved"
   }
 ]);
-
 const key = 'jobconnect-demo-v1';
-
-
-
 let state;
-
 try {
-
     state = JSON.parse(localStorage.getItem(key))
-
 } catch {
-
     state = null;
-
 }
-
-
-
 if (!state || !Array.isArray(state.accounts)) {
-
     state = { user: null, accounts: [] };
-
 }
-
-
-
 // Tương thích với dữ liệu cũ đã lưu trong trình duyệt.
-
 state.accounts = state.accounts.filter(a => a && typeof a.email === 'string').map(a => ({
-
     ...a,
-
     saved: Array.isArray(a.saved) ? a.saved : [],
-
     applications: Array.isArray(a.applications) ? a.applications : []
-
 }));
-
 if (state.user && !state.accounts.some(a => a.email === state.user.email)) {
-
     state.user = null;
-
 }
-
-
-
 let page = 'jobs', applyId = null, cvs = [], db;
-
-
-
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-
-
 function persist() {
-
     try {
-
         localStorage.setItem(key, JSON.stringify(state))
-
     } catch {
-
         toast('Không thể lưu dữ liệu. Kiểm tra dung lượng trình duyệt.')
-
     }
-
 }
-
-
-
 function account() {
-
     return state.accounts.find(a => a.email === state.user?.email)
-
 }
-
-
-
 function candidate() {
-
     if (!state.user) {
-
         $('#authDialog').showModal();
-
         return false
-
     }
-
     if (!account()) {
-
         state.user = null;
-
         persist();
-
         $('#authDialog').showModal();
-
         return false;
-
     }
-
     if (state.user.role !== 'Candidate') {
-
         toast('Tính năng dành cho ứng viên. Hãy đăng xuất và chọn vai trò Ứng viên.');
-
         return false
-
     }
-
     return true
-
 }
-
-
-
 let toastTimer;
 // Thông báo xuất hiện ngay tại hộp thoại đang thao tác; nếu không có dialog thì hiển thị trên trang.
 function toast(message, kind) {
@@ -878,15 +713,9 @@ function authFeedback(message, success = true) {
     el.hidden = !message;
     if (message) $('#authDialog').scrollTop = 0;
 }
-
 function empty(s) {
-
     return `<div class="empty">${esc(s)}</div>`
-
 }
-
-
-
 function changePage(p) {
     if (p !== 'jobs' && !candidate()) return;
     if (typeof routeTo === 'function') {
@@ -897,11 +726,8 @@ function changePage(p) {
     render();
     $('#workspace').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-
 function render() {
-
     const a = account();
-
     const loggedIn = Boolean(state.user);
     $('#account').hidden = loggedIn;
     $('#registerButton').hidden = loggedIn;
@@ -914,34 +740,18 @@ function render() {
         $('#userRole').textContent = {Candidate:'Ứng viên', Recruiter:'Nhà tuyển dụng', Admin:'Quản trị viên'}[state.user.role] || 'Tài khoản';
         $('#userProfile').setAttribute('aria-label', 'Mở trang tài khoản: ' + displayName);
     }
-
     $('#savedCount').textContent = a?.saved?.length || 0;
-
     document.querySelectorAll('[data-page]').forEach(b => b.classList.toggle('active', b.dataset.page === page));
-
     $('#hero').hidden = page !== 'jobs';
-
     $('#jobsView').hidden = !['jobs', 'saved'].includes(page);
-
     $('#applicationsView').hidden = page !== 'applications';
-
     $('#cvView').hidden = page !== 'cv';
-
     $('#pageTitle').textContent = { jobs: 'Việc làm mới nhất', saved: 'Việc làm đã lưu', applications: 'Theo dõi đơn ứng tuyển', cv: 'Hồ sơ & CV' }[page];
-
     $('#resultCount').textContent = '';
-
     if (['jobs', 'saved'].includes(page)) renderJobs();
-
     if (page === 'applications') renderApplications();
-
     if (page === 'cv') renderCV()
-
 }
-
-
-
-
 const companyLogos = {
   "TechNova Studio": "images/companies/f133adae63.svg",
   "Pixel & Co.": "images/companies/c0f2da66a6.svg",
@@ -982,317 +792,149 @@ const companyLogos = {
   "VectorCloud": "images/companies/ac4025e2fd.svg"
 };
 const companyLogo = company => companyLogos[company] || "images/companies/default.svg";
-
 function renderJobs() {
-
     const start = performance.now(), q = $('#keyword').value.trim().toLocaleLowerCase('vi');
-
     let list = jobs.filter(j => j.open && j.status !== 'pending' && j.status !== 'rejected' && (page !== 'saved' || account()?.saved.includes(j.id)) && [j.title, j.company, ...j.skills].join(' ').toLocaleLowerCase('vi').includes(q) && (!$('#location').value || j.location === $('#location').value) && (!$('#type').value || j.type === $('#type').value) && j.min >= Number($('#salary').value || 0));
-
     list.sort((a, b) => $('#sort').value === 'salary' ? b.max - a.max : b.date.localeCompare(a.date));
-
     $('#jobList').innerHTML = list.map(j => `<article class="card"><div class="logo" aria-hidden="true"><span class="company-initial">${esc(String(j.company || "?").trim().charAt(0).toLocaleUpperCase("vi"))}</span></div><div class="card-body"><h3>${esc(j.title)}</h3><div class="company">${esc(j.company)} · ${j.location}</div><div class="tags"><span class="tag salary">${j.min}–${j.max} triệu</span><span class="tag">${j.type}</span>${j.skills.map(s => `<span class="tag">${s}</span>`).join('')}</div><div class="card-bottom"><small>${j.open ? 'Đang tuyển' : 'Đã đóng'} · ${j.date}</small><button data-detail="${j.id}">Xem chi tiết →</button></div></div><button class="save" data-save="${j.id}" aria-label="${account()?.saved.includes(j.id) ? 'Bỏ lưu' : 'Lưu'} ${esc(j.title)}" aria-pressed="${!!account()?.saved.includes(j.id)}">${account()?.saved.includes(j.id) ? '♥' : '♡'}</button></article>`).join('') || empty('Chưa có việc làm phù hợp với bộ lọc.');
-
     $('#resultCount').textContent = `${list.length} công việc · Lọc cục bộ ${Math.ceil(performance.now() - start)} ms`
-
 }
-
-
-
 function toggleSave(id) {
-
     if (!candidate()) return;
-
     const a = account();
-
     a.saved = a.saved.includes(id) ? a.saved.filter(x => x !== id) : [...new Set([...a.saved, id])];
-
     persist();
-
     render()
-
 }
-
-
-
 function details(id) {
-
     const j = jobs.find(j => j.id === id);
-
     if (!j) return;
-
     const applied = account()?.applications.some(a => a.jobId === id);
-
     $('#detailBody').innerHTML = `<span class="eyebrow">${esc(j.company)}</span><h2>${esc(j.title)}</h2><p>${j.location} · ${j.type} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>Tham gia xây dựng và phát triển sản phẩm, phối hợp với các thành viên trong nhóm để mang lại trải nghiệm tốt cho khách hàng.</p><h3>Yêu cầu</h3><p>Nắm vững ${j.skills.join(', ')}. Chủ động học hỏi, có tinh thần trách nhiệm và khả năng làm việc nhóm.</p><h3>Quyền lợi</h3><p>Môi trường cởi mở, cơ hội phát triển và thu nhập theo năng lực.</p><p class="muted">Tin tuyển dụng và nội dung mô tả là dữ liệu mẫu.</p><button class="primary" data-apply="${id}" ${!j.open || applied ? 'disabled' : ''}>${applied ? 'Bạn đã ứng tuyển' : j.open ? 'Ứng tuyển ngay' : 'Tin đã đóng'}</button>`;
-
     $('#detailDialog').showModal()
-
 }
-
-
-
 async function startApply(id) {
-
     if (!candidate()) return;
-
     const j = jobs.find(j => j.id === id);
-
     if (!j?.open) return toast('Tin tuyển dụng đã đóng.');
-
     if (account().applications.some(a => a.jobId === id)) return toast('Mỗi tin chỉ được ứng tuyển một lần, kể cả sau khi rút đơn.');
-
     await loadCV();
-
     if (!cvs.length) {
-
         $('#detailDialog').close();
-
         changePage('cv');
-
         return toast('Bạn cần tải lên CV PDF trước khi ứng tuyển.')
-
     }
-
     applyId = id;
-
     $('#detailDialog').close();
-
     $('#applyTitle').textContent = j.title + ' · ' + j.company;
-
     $('#cvSelect').innerHTML = cvs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-
     $('#letter').value = '';
-
     $('#applyDialog').showModal()
-
 }
-
-
-
 function renderApplications() {
-
     const list = (account()?.applications || []).filter(a => !$('#statusFilter').value || a.status === $('#statusFilter').value);
-
     $('#resultCount').textContent = `${list.length} đơn ứng tuyển`;
-
     $('#applicationList').innerHTML = list.map(a => {
-
         const j = jobs.find(j => j.id === a.jobId);
-
         return `<article class="card"><div class="card-body"><h3>${esc(j.title)}</h3><p class="company">${esc(j.company)} · ${new Date(a.date).toLocaleDateString('vi-VN')}</p><span class="status ${a.status}">${statuses[a.status]} (${a.status})</span><p class="muted">CV: ${esc(a.cvName)}</p>${['submitted', 'reviewing', 'interviewed'].includes(a.status) ? `<button data-withdraw="${a.jobId}">Rút đơn ứng tuyển</button>` : ''}</div></article>`
-
     }).join('') || empty('Chưa có đơn ứng tuyển ở trạng thái này.')
-
 }
-
-
-
 function withdraw(id) {
-
     if (!candidate()) return;
-
     const a = account().applications.find(a => a.jobId === id);
-
     if (!a || !['submitted', 'reviewing', 'interviewed'].includes(a.status)) return toast('Đơn đã kết thúc, không thể rút.');
-
     if (!confirm('Bạn muốn rút đơn? Bạn sẽ không thể ứng tuyển lại tin này.')) return;
-
     a.status = 'withdrawn';
-
     persist();
-
     render();
-
     toast('Rút đơn ứng tuyển thành công!', 'success')
-
 }
-
-
-
 const ready = new Promise((resolve, reject) => {
-
     if (!('indexedDB' in window)) {
-
         reject(new Error('Trình duyệt không hỗ trợ IndexedDB'));
-
         return;
-
     }
-
     let req;
-
     try {
-
         req = indexedDB.open('jobconnect-cvs', 1);
-
     } catch (error) {
-
         reject(error);
-
         return;
-
     }
-
     req.onupgradeneeded = () => {
-
         if (!req.result.objectStoreNames.contains('cvs')) {
-
             req.result.createObjectStore('cvs', { keyPath: 'id' });
-
         }
-
     };
-
     req.onsuccess = () => {
-
         db = req.result;
-
         resolve()
-
     };
-
     req.onerror = () => reject(req.error);
-
     req.onblocked = () => reject(new Error('Cơ sở dữ liệu CV đang bị khóa'));
-
 });
-
 ready.catch(() => toast('Không thể mở kho CV trên trình duyệt.'));
-
-
-
 async function cvStore(mode, action) {
-
     await ready;
-
     return new Promise((resolve, reject) => {
-
         const tx = db.transaction('cvs', mode);
-
         const r = action(tx.objectStore('cvs'));
-
         tx.oncomplete = () => resolve(r.result);
-
         tx.onerror = () => reject(tx.error);
-
         tx.onabort = () => reject(tx.error)
-
     })
-
 }
-
-
-
 async function loadCV() {
-
     const all = await cvStore('readonly', s => s.getAll());
-
     cvs = all.filter(c => c.owner === state.user?.email)
-
 }
-
-
-
 async function renderCV() {
-
     try {
-
         await loadCV();
-
         $('#cvList').innerHTML = cvs.map(c => `<div class="cv-row"><span>▤ ${esc(c.name)} <small>(${(c.size / 1024).toFixed(0)} KB)</small></span><button data-preview="${c.id}">Xem PDF</button><button data-delete="${c.id}">Xóa</button></div>`).join('') || empty('Bạn chưa tải lên CV nào.')
-
     } catch {
-
         toast('Không thể đọc CV trong trình duyệt.')
-
     }
-
 }
-
-
-
 $('#cvInput').addEventListener('change', async e => {
-
     const f = e.target.files[0];
-
     e.target.value = '';
-
     if (!f || !candidate()) return;
-
     if (!/\.pdf$/i.test(f.name) || f.type !== 'application/pdf') return toast('Chỉ chấp nhận file PDF.');
-
     if (!f.size || f.size > 5 * 1024 * 1024) return toast('File phải lớn hơn 0 và không vượt quá 5 MB.');
-
     try {
-
         const signature = new TextDecoder().decode(await f.slice(0, 5).arrayBuffer());
-
         if (signature !== '%PDF-') return toast('Nội dung file không có chữ ký PDF hợp lệ.');
-
         const id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-
             ? crypto.randomUUID()
-
             : `cv-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
         await cvStore('readwrite', s => s.put({
-
             id,
-
             owner: state.user.email,
-
             name: f.name,
-
             size: f.size,
-
             blob: f
-
         }));
-
         await renderCV();
-
         toast('Tải CV PDF thành công!', 'success')
-
     } catch {
-
         toast('Không thể lưu CV. Kiểm tra quyền hoặc dung lượng trình duyệt.')
-
     }
-
 });
-
-
-
 $('#applyForm').addEventListener('submit', async e => {
-
     e.preventDefault();
-
     if (!candidate()) return;
-
     await loadCV();
-
     const cv = cvs.find(c => c.id === $('#cvSelect').value), j = jobs.find(j => j.id === applyId), a = account();
-
     if (!a) return toast('Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại.');
-
     if (!j?.open || (j.status && j.status !== 'approved') || !cv) return toast('Tin chưa được duyệt, đã đóng hoặc CV không còn tồn tại.');
-
     if (a.applications.some(a => a.jobId === applyId)) return toast('Bạn đã ứng tuyển tin này.');
-
     a.applications.push({ jobId: applyId, status: 'submitted', date: new Date().toISOString(), cvId: cv.id, cvName: cv.name, letter: $('#letter').value.trim() });
-
     persist();
-
     $('#applyDialog').close();
-
     changePage('applications');
-
     toast('Nộp đơn ứng tuyển thành công!', 'success')
-
 });
-
-
-
 // Authentication demo only: localStorage is NOT secure authentication.
 // Tài khoản cố định để TEST GIAO DIỆN; không phải xác thực an toàn.
 // Ứng viên KHÔNG có tài khoản mặc định: đăng ký từ giao diện.
@@ -1397,120 +1039,62 @@ document.addEventListener('click', e => {
   button.classList.toggle('is-visible',field.type==='text');
   button.setAttribute('aria-pressed',String(field.type==='text'));
 });
-
 document.addEventListener('click', async e => {
-
     const b = e.target.closest('button');
-
     if (!b) return;
-
     try {
-
         if (b.hasAttribute('data-close')) b.closest('dialog').close();
-
         // Điều hướng data-page do portal.js xử lý bằng URL hash.
-
         if (b.dataset.save) toggleSave(Number(b.dataset.save));
-
         // Mở chi tiết bằng trang #/jobs/:id do portal.js xử lý.
-
         if (b.dataset.apply) await startApply(Number(b.dataset.apply));
-
         if (b.dataset.withdraw) withdraw(Number(b.dataset.withdraw));
-
         if (b.dataset.key) {
-
             $('#keyword').value = b.dataset.key;
-
             page = 'jobs';
-
             render()
-
         }
-
         if (b.dataset.delete && candidate()) {
-
             if (!confirm('Xóa CV? Tên CV vẫn được giữ trong lịch sử ứng tuyển.')) return;
-
             await loadCV();
-
             if (!cvs.some(c => c.id === b.dataset.delete)) return;
-
             await cvStore('readwrite', s => s.delete(b.dataset.delete));
-
             await renderCV()
-
         }
-
         if (b.dataset.preview && candidate()) {
-
             await loadCV();
-
             const c = cvs.find(c => c.id === b.dataset.preview);
-
             if (c) {
-
                 const u = URL.createObjectURL(c.blob);
-
                 const a = document.createElement('a');
-
                 a.href = u;
-
                 a.target = '_blank';
-
                 a.rel = 'noopener';
-
                 a.click();
-
                 setTimeout(() => URL.revokeObjectURL(u), 60000)
-
             }
-
         }
-
     } catch {
-
         toast('Thao tác chưa hoàn tất. Vui lòng thử lại.')
-
     }
-
 });
-
-
-
 $('#search').onsubmit = e => {
-
     e.preventDefault();
-
     page = 'jobs';
-
     render()
-
 };
-
 ['location', 'type', 'salary', 'sort'].forEach(id => $('#' + id).addEventListener('change', renderJobs));
-
 $('#reset').onclick = () => {
-
     ['keyword', 'location', 'type'].forEach(id => $('#' + id).value = '');
-
     $('#salary').value = 0;
-
     $('#sort').value = 'new';
-
     renderJobs()
-
 };
-
 $('#statusFilter').insertAdjacentHTML('beforeend', Object.entries(statuses).map(([k, v]) => `<option value="${k}">${v} (${k})</option>`).join(''));
-
 $('#statusFilter').onchange = renderApplications;
-
 render();
-
 // Chỉ hiện phần khám phá trang chủ khi xem danh sách việc làm.
 (function(){const discovery=document.getElementById("discovery");if(!discovery)return;const watch=new MutationObserver(()=>{discovery.hidden=document.getElementById("hero").hidden;});watch.observe(document.getElementById("hero"),{attributes:true,attributeFilter:["hidden"]});discovery.hidden=document.getElementById("hero").hidden;})();
-
 // Các nút khám phá ngành trên trang chủ (frontend demo).
 document.getElementById('showAllCategories')?.addEventListener('click', () => {
   document.getElementById('keyword').value = '';
