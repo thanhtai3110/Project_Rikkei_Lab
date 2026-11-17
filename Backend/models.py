@@ -82,3 +82,20 @@ class Application(Base):
     )
     status = Column(String(20), nullable=False, default="pending")
     applied_at = Column(DateTime, nullable=False, server_default=func.now())
+
+class SavedJob(Base):
+    __tablename__ = 'saved_jobs'
+    __table_args__ = (UniqueConstraint('candidate_id','job_id',name='uq_saved_candidate_job'),)
+    id = Column(Integer, primary_key=True)
+    candidate_id = Column(Integer, ForeignKey('users.user_id'),nullable=False)
+    job_id = Column(Integer,ForeignKey('jobs.job_id'),nullable=False)
+
+
+# Mã khôi phục mật khẩu: chỉ lưu dấu băm, không lưu mã OTP dạng rõ.
+class PasswordResetCode(Base):
+    __tablename__ = 'password_reset_codes'
+    user_id = Column(Integer, ForeignKey('users.user_id'), primary_key=True)
+    code_hash = Column(String(64), nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    attempts = Column(Integer, nullable=False, default=0)

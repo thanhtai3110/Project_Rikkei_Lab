@@ -1,5 +1,6 @@
-from datetime import timedelta
-
-SECRET_KEY = "job_portal_secret_key_change_this"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+import os
+from dotenv import load_dotenv
+load_dotenv()
+SECRET_KEY = os.environ.get('JOB_SECRET_KEY', 'local-dev-only-change-before-deploy')
+ALGORITHM = 'HS256'
+ACCESS_TOKEN_EXPIRE_MINUTES = 120
