@@ -4,43 +4,26 @@ const portalView = document.getElementById('portalView');
 const portalContent = document.getElementById('portalContent');
 const mockJobsKey = 'jobconnect-custom-jobs-v3';
 let portal = '', recruiterTab = 'company', adminTab = 'pending', adminPage = 1;
+let adminSearch = '', adminRoleFilter = '', adminStatusFilter = '';
+
 const safe = esc;
 const current = () => account();
 const role = () => state.user?.role || null;
 const publicJob = j => j && j.open && (j.status || 'approved') === 'approved';
 const ownedJobs = () => jobs.filter(j => j.owner === state.user?.email);
 const findJob = id => jobs.find(j => j.id === Number(id));
-const allAppsForRecruiter = () => {
-  const ids = new Set(ownedJobs().map(j => j.id));
-  return state.accounts.filter(a => a.role === 'Candidate').flatMap(a => (a.applications || []).filter(x => ids.has(x.jobId)).map(x => ({...x, applicant:a})));
-};
+const allAppsForRecruiter = () => (window.JobAPI?.recruiterApps||[]).map(a=>({
+ id:a.id, jobId:a.job_id,date:a.applied_at,status:JobAPI.normalizeStatus(a.status),
+ applicant:{name:a.candidate.name,email:a.candidate.email,profile:{skills:(a.candidate.skills||[]).join(', ')}}
+}));
 function requireRole(expected) {
   if (!role()) { authMode('login'); document.getElementById('authDialog').showModal(); return false; }
   if (role() !== expected) {toast('Bạn không có quyền truy cập khu vực này.');return false;}
   return true;
 }
-function loadMockJobs() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(mockJobsKey) || '[]');
-    if (Array.isArray(saved)) for (const j of saved) {
-      if (!j || typeof j.id !== 'number' || typeof j.owner !== 'string') continue;
-      const i = jobs.findIndex(x => x.id === j.id);
-      if (i >= 0) jobs[i] = {...jobs[i],...j}; else jobs.push(j);
-    }
-  } catch { /* invalid demo data ignored */ }
-  // Chuẩn hóa địa điểm cũ trong localStorage khi nâng cấp Frontend.
-  const legacyPlaces = {4:'Hà Nội',6:'TP. Hồ Chí Minh',21:'Thái Nguyên',31:'Hải Dương',37:'Bình Định'};
-  for (const j of jobs) if (j.location === 'Remote') j.location = legacyPlaces[j.id] || 'Hà Nội';
-  for (const j of jobs) {
-    if (!j.owner && j.company === 'TechNova Studio') j.owner = 'recruiter@demo.vn';
-    if (!j.status) j.status = j.open ? 'approved' : 'closed';
-  }
-}
-function saveMockJobs() {
-  try {localStorage.setItem(mockJobsKey,JSON.stringify(jobs.filter(j=>j.owner)));}
-  catch {toast('Không thể lưu tin trong trình duyệt.');}
-}
-function saveAndRefresh(message) { saveMockJobs(); persist(); render(); portalRender(); if(message)toast(message); }
+function loadMockJobs() { /* Server MySQL là nguồn dữ liệu; không nhập lại jobs từ localStorage. */ }
+function saveMockJobs() { /* Không ghi đè MySQL bằng demo localStorage. */ }
+function saveAndRefresh(message) { render(); portalRender(); if(message)toast(message,'success'); }
 function routeTo(hash) {if (location.hash !== hash) location.hash = hash; else route();}
 function setPortal(name, tab) {
   const expected = name === 'candidate-profile' ? 'Candidate' : name === 'recruiter' ? 'Recruiter' : 'Admin';
@@ -72,7 +55,7 @@ function portalRender() {
   }
   ['hero','jobsView','applicationsView','cvView'].forEach(id => document.getElementById(id).hidden=true);
   portalView.hidden=false;
-  document.getElementById('resultCount').textContent='DỮ LIỆU DEMO';
+  document.getElementById('resultCount').textContent='DỮ LIỆU MYSQL';
   document.querySelectorAll('[data-page]').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('[data-portal]').forEach(b=>b.classList.toggle('active',b.dataset.portal===portal));
   if (portal === 'candidate-profile') renderCandidateProfile();
@@ -111,21 +94,49 @@ function renderRecruiter() {
 function renderApplicantTable() {
   const term=(document.getElementById('applicantSearch')?.value||'').toLocaleLowerCase('vi'), filter=document.getElementById('applicantStatus')?.value||'',date=document.getElementById('applicantDate')?.value||'';
   const list=allAppsForRecruiter().filter(a=>(!filter||a.status===filter)&&(!date||a.date.slice(0,10)>=date)&&[a.applicant.name,a.applicant.profile?.skills||''].join(' ').toLocaleLowerCase('vi').includes(term));
-  document.getElementById('recruiterApplicants').innerHTML=`<div class="table-scroll"><table class="portal-table"><thead><tr><th>Ứng viên</th><th>Tin tuyển dụng</th><th>Ngày nộp</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead><tbody>${list.map(a=>`<tr><td>${safe(a.applicant.name)}<div class="inline-note">${safe(a.applicant.profile?.skills||'Chưa khai báo kỹ năng')}</div></td><td>${safe(findJob(a.jobId)?.title||'Không có tin')}</td><td>${new Date(a.date).toLocaleDateString('vi-VN')}</td><td>${safe(statuses[a.status]||a.status)}</td><td><select aria-label="Cập nhật trạng thái" data-app-status="${a.jobId}" data-app-email="${safe(a.applicant.email)}" ${['withdrawn','accepted','rejected'].includes(a.status)?'disabled':''}>${Object.entries(statuses).filter(([v])=>v!=='withdrawn').map(([v,t])=>`<option value="${v}" ${a.status===v?'selected':''}>${t}</option>`).join('')}</select></td></tr>`).join('')||'<tr><td colspan="5">Không có hồ sơ phù hợp.</td></tr>'}</tbody></table></div>`;
+  document.getElementById('recruiterApplicants').innerHTML=`<div class="table-scroll"><table class="portal-table"><thead><tr><th>Ứng viên</th><th>Tin tuyển dụng</th><th>Ngày nộp</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead><tbody>${list.map(a=>`<tr><td>${safe(a.applicant.name)}<div class="inline-note">${safe(a.applicant.profile?.skills||'Chưa khai báo kỹ năng')}</div></td><td>${safe(findJob(a.jobId)?.title||'Không có tin')}</td><td>${new Date(a.date).toLocaleDateString('vi-VN')}</td><td>${safe(statuses[a.status]||a.status)}</td><td><select aria-label="Cập nhật trạng thái" data-app-status="${a.jobId}" data-app-email="${safe(a.applicant.email)}" ${['withdrawn','accepted','rejected'].includes(a.status)?'disabled':''}>${Object.entries(statuses).filter(([v])=>['reviewing','interviewed','accepted','rejected'].includes(v)).map(([v,t])=>`<option value="${v}" ${a.status===v?'selected':''}>${t}</option>`).join('')}</select></td></tr>`).join('')||'<tr><td colspan="5">Không có hồ sơ phù hợp.</td></tr>'}</tbody></table></div>`;
 }
 const adminNav = () => `<div class="portal-actions"><button data-admin-tab="pending" class="${adminTab==='pending'?'active':''}">Kiểm duyệt tin</button><button data-admin-tab="users" class="${adminTab==='users'?'active':''}">Quản lý tài khoản</button></div>`;
+function filteredAdminUsers(){
+  const users=window.JobAPI?.adminUsers||[];
+  const q=adminSearch.trim().toLocaleLowerCase('vi');
+  return users.filter(u =>
+    (!q || [u.full_name,u.email,String(u.user_id)].join(' ').toLocaleLowerCase('vi').includes(q)) &&
+    (!adminRoleFilter || u.role===adminRoleFilter) &&
+    (!adminStatusFilter || u.status===adminStatusFilter)
+  );
+}
+function renderAdminUserTable(){
+  const target=document.getElementById('adminUserTable');
+  if(!target)return;
+  const list=filteredAdminUsers(),perPage=8,maxPage=Math.max(1,Math.ceil(list.length/perPage));
+  adminPage=Math.min(Math.max(adminPage,1),maxPage);
+  const pageItems=list.slice((adminPage-1)*perPage,adminPage*perPage);
+  const roleName={candidate:'Ứng viên',recruiter:'Nhà tuyển dụng',admin:'Admin'};
+  const statusName={active:'Hoạt động',inactive:'Vô hiệu hóa',locked:'Đã khóa',disabled:'Vô hiệu hóa'};
+  target.innerHTML=`<div class="admin-users-summary">Hiển thị <strong>${list.length}</strong> / ${(window.JobAPI?.adminUsers||[]).length} tài khoản từ MySQL</div>
+    <div class="table-scroll"><table class="portal-table"><thead><tr><th>ID</th><th>Họ và tên</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>${pageItems.map(u=>`<tr><td>#${Number(u.user_id)}</td><td><strong>${safe(u.full_name)}</strong></td><td>${safe(u.email)}</td><td>${safe(roleName[u.role]||u.role)}</td><td><span class="status ${u.status==='active'?'status-approved':'status-rejected'}">${safe(statusName[u.status]||u.status)}</span></td><td><div class="admin-user-actions">${u.role==='admin'?'<span class="muted">Được bảo vệ</span>':`<button type="button" data-admin-user-toggle="${Number(u.user_id)}" data-admin-user-name="${safe(u.full_name)}" data-admin-user-status="${safe(u.status)}">${u.status==='active'?'Khóa':'Mở khóa'}</button><button type="button" class="danger" data-admin-user-delete="${Number(u.user_id)}" data-admin-user-name="${safe(u.full_name)}">Xóa</button>`}</div></td></tr>`).join('')||'<tr><td colspan="6">Không có tài khoản phù hợp.</td></tr>'}</tbody></table></div>
+    <div class="pagination"><button type="button" data-admin-page="prev" ${adminPage<=1?'disabled':''}>Trang trước</button><span>Trang ${adminPage}/${maxPage}</span><button type="button" data-admin-page="next" ${adminPage>=maxPage?'disabled':''}>Trang sau</button></div>`;
+}
 function renderAdmin() {
   document.getElementById('pageTitle').textContent='Dashboard quản trị Admin';
-  const pending=jobs.filter(j=>j.status==='pending'), apps=state.accounts.reduce((n,a)=>n+(a.applications||[]).length,0), candidates=state.accounts.filter(a=>a.role==='Candidate').length,recruiters=state.accounts.filter(a=>a.role==='Recruiter').length;
-  const stats=`<div class="portal-cards portal-cards-four"><div>Ứng viên<strong>${candidates}</strong></div><div>Nhà tuyển dụng<strong>${recruiters}</strong></div><div>Tin tuyển dụng<strong>${jobs.length}</strong></div><div>Đơn ứng tuyển<strong>${apps}</strong></div></div>`;
+  const users=window.JobAPI?.adminUsers||[];
+  const pending=jobs.filter(j=>j.status==='pending');
+  const candidates=users.filter(u=>u.role==='candidate').length;
+  const recruiters=users.filter(u=>u.role==='recruiter').length;
+  const stats=`<div class="portal-cards portal-cards-four"><div>Ứng viên<strong>${candidates}</strong></div><div>Nhà tuyển dụng<strong>${recruiters}</strong></div><div>Tổng tài khoản<strong>${users.length}</strong></div><div>Tin chờ duyệt<strong>${pending.length}</strong></div></div>`;
   let content='';
   if(adminTab==='pending') content=`<div class="panel"><h3>Tin tuyển dụng chờ kiểm duyệt</h3><p class="muted">Tin pending và rejected không hiển thị trên danh sách việc làm công khai.</p><div class="table-scroll"><table class="portal-table"><thead><tr><th>Tin tuyển dụng</th><th>Doanh nghiệp</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody>${pending.map(j=>`<tr><td>${safe(j.title)}</td><td>${safe(j.company)}</td><td><span class="status">pending</span></td><td><button data-preview-admin="${j.id}">Xem tin</button><button data-review-job="${j.id}" data-decision="approved">Duyệt</button><button class="danger" data-review-job="${j.id}" data-decision="rejected">Từ chối</button></td></tr>`).join('')||'<tr><td colspan="4">Không có tin nào chờ duyệt.</td></tr>'}</tbody></table></div></div>`;
-  if(adminTab==='users') {
-    const perPage=5,maxPage=Math.max(1,Math.ceil(state.accounts.length/perPage));adminPage=Math.min(adminPage,maxPage);
-    content=`<div class="panel"><h3>Danh sách tài khoản</h3><p class="muted">Danh sách chỉ xem trong bản Frontend demo. Khóa/xóa tài khoản cần API Backend.</p><div class="table-scroll"><table class="portal-table"><thead><tr><th>Họ và tên</th><th>Email</th><th>Vai trò</th></tr></thead><tbody>${state.accounts.slice((adminPage-1)*perPage,adminPage*perPage).map(a=>`<tr><td>${safe(a.name)}</td><td>${safe(a.email)}</td><td>${safe(a.role)}</td></tr>`).join('')}</tbody></table></div><div class="pagination"><button data-admin-page="prev" ${adminPage<=1?'disabled':''}>Trang trước</button><span>Trang ${adminPage}/${maxPage}</span><button data-admin-page="next" ${adminPage>=maxPage?'disabled':''}>Trang sau</button></div></div>`;
-  }
+  if(adminTab==='users') content=`<div class="panel"><div class="admin-users-heading"><div><h3>Quản lý tài khoản người dùng</h3><p>Danh sách được lấy từ <code>GET /api/admin/users</code> và cơ sở dữ liệu MySQL. Chỉ tài khoản Admin được phép truy cập.</p></div><button type="button" id="adminUsersReload">Làm mới dữ liệu</button></div>
+    <div class="admin-users-filters"><label>Tìm người dùng<input id="adminUserSearch" placeholder="Tên, email hoặc ID..." autocomplete="off" value="${safe(adminSearch)}"></label>
+    <label>Vai trò<select id="adminUserRole"><option value="">Tất cả vai trò</option><option value="candidate" ${adminRoleFilter==='candidate'?'selected':''}>Ứng viên</option><option value="recruiter" ${adminRoleFilter==='recruiter'?'selected':''}>Nhà tuyển dụng</option><option value="admin" ${adminRoleFilter==='admin'?'selected':''}>Admin</option></select></label>
+    <label>Trạng thái<select id="adminUserStatus"><option value="">Tất cả trạng thái</option><option value="active" ${adminStatusFilter==='active'?'selected':''}>Hoạt động</option><option value="inactive" ${adminStatusFilter==='inactive'?'selected':''}>Vô hiệu hóa</option><option value="locked" ${adminStatusFilter==='locked'?'selected':''}>Đã khóa</option></select></label></div>
+    <div id="adminUserTable"></div><p class="muted">Khóa: tài khoản không thể đăng nhập và token cũ không còn dùng được. Xóa: xóa vĩnh viễn tài khoản cùng dữ liệu liên quan, không thể hoàn tác. Tài khoản Admin được bảo vệ.</p></div>`;
   portalContent.innerHTML=stats+adminNav()+content;
+  if(adminTab==='users')renderAdminUserTable();
 }
+
 function renderPublicJobs() {
   const start=performance.now(),q=document.getElementById('keyword').value.trim().toLocaleLowerCase('vi');
   const a=current();
@@ -153,8 +164,48 @@ function route() {
   routeTo('#/jobs');
 }
 window.addEventListener('hashchange',route);
+
+// Hộp xác nhận thiết kế theo giao diện JobConnect, thay cho confirm() mặc định.
+function jobConfirm({title, message, action='Xác nhận', danger=false}) {
+  const dialog = document.getElementById('jobConfirmDialog');
+  if (!dialog) return Promise.resolve(false);
+  const heading = document.getElementById('jobConfirmTitle');
+  const body = document.getElementById('jobConfirmMessage');
+  const yes = document.getElementById('jobConfirmAccept');
+  const cancel = document.getElementById('jobConfirmCancel');
+  heading.textContent = title;
+  body.textContent = message;
+  yes.textContent = action;
+  yes.classList.toggle('is-danger', danger);
+  document.getElementById('jobConfirmIcon').textContent = danger ? '!' : '✓';
+  dialog.classList.toggle('confirm-danger', danger);
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      yes.removeEventListener('click', accept);
+      cancel.removeEventListener('click', dismiss);
+      dialog.removeEventListener('cancel', esc);
+      dialog.removeEventListener('close', closed);
+      if (dialog.open) dialog.close();
+      resolve(result);
+    };
+    const accept = () => finish(true);
+    const dismiss = () => finish(false);
+    const esc = e => {e.preventDefault();finish(false);};
+    const closed = () => finish(false);
+    yes.addEventListener('click', accept);
+    cancel.addEventListener('click', dismiss);
+    dialog.addEventListener('cancel', esc);
+    dialog.addEventListener('close', closed);
+    dialog.showModal();
+    cancel.focus();
+  });
+}
+
 // Lắng nghe nút bấm bổ sung. Những nút cũ trong app.js vẫn chạy bình thường.
-document.addEventListener('click',e=>{
+document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b)return;
  if(b.dataset.portal){const name=b.dataset.portal;routeTo(name==='candidate-profile'?'#/candidate/profile':name==='recruiter'?'#/employer/company':'#/admin/jobs');}
  if(b.dataset.page){const map={jobs:'#/jobs',saved:'#/saved',applications:'#/candidate/applications',cv:'#/candidate/cv'};if(map[b.dataset.page])routeTo(map[b.dataset.page]);}
@@ -162,21 +213,84 @@ document.addEventListener('click',e=>{
  if(b.dataset.detail)routeTo('#/jobs/'+Number(b.dataset.detail));
  if(b.dataset.recTab)routeTo({company:'#/employer/company',jobs:'#/employer/jobs',applications:'#/employer/applications'}[b.dataset.recTab]);
  if(b.dataset.adminTab)routeTo(b.dataset.adminTab==='users'?'#/admin/users':'#/admin/jobs');
- if(b.dataset.adminPage){adminPage+=b.dataset.adminPage==='next'?1:-1;renderAdmin();}
+ if(b.dataset.adminPage){adminPage+=b.dataset.adminPage==='next'?1:-1;renderAdminUserTable();}
+ if(b.dataset.adminUserToggle){
+  if(!requireRole('Admin'))return;
+  const id=Number(b.dataset.adminUserToggle),name=b.dataset.adminUserName||('#'+id);
+  const next=b.dataset.adminUserStatus==='active'?'locked':'active';
+  if(!await jobConfirm({
+   title: next==='locked'?'Khóa tài khoản':'Mở khóa tài khoản',
+   message: next==='locked' ? `Bạn có chắc muốn khóa tài khoản "${name}"? Người dùng sẽ không thể đăng nhập cho đến khi được mở khóa.` : `Bạn có muốn mở khóa tài khoản "${name}" để người dùng có thể đăng nhập trở lại?`,
+   action: next==='locked'?'Khóa tài khoản':'Mở khóa', danger:next==='locked'
+  }))return;
+  b.disabled=true;
+  try{
+   await JobAPI.request('/api/admin/users/'+id+'/status',{method:'PATCH',body:{status:next}});
+   await JobAPI.refresh();renderAdminUserTable();
+   toast(next==='locked'?'Khóa tài khoản thành công!':'Mở khóa tài khoản thành công!','success');
+  }catch(err){toast(err.message,'error');b.disabled=false;}
+  return;
+ }
+ if(b.dataset.adminUserDelete){
+  if(!requireRole('Admin'))return;
+  const id=Number(b.dataset.adminUserDelete),name=b.dataset.adminUserName||('#'+id);
+  if(!await jobConfirm({
+   title:'Xóa tài khoản vĩnh viễn',
+   message:`Bạn sắp xóa tài khoản "${name}" (#${id}) cùng dữ liệu liên quan, bao gồm đơn ứng tuyển, tin đã lưu và tin đăng nếu là nhà tuyển dụng. Hành động này không thể hoàn tác.`,
+   action:'Xóa vĩnh viễn', danger:true
+  }))return;
+  b.disabled=true;
+  try{
+   await JobAPI.request('/api/admin/users/'+id,{method:'DELETE'});
+   await JobAPI.refresh();renderAdminUserTable();toast('Đã xóa tài khoản và dữ liệu liên quan.','success');
+  }catch(err){toast(err.message,'error');b.disabled=false;}
+  return;
+ }
+ if(b.id==='adminUsersReload'){if(!requireRole('Admin'))return;b.disabled=true;try{await JobAPI.refresh();toast('Đã cập nhật danh sách tài khoản từ MySQL.','success');}catch(err){toast(err.message);}finally{const r=document.getElementById('adminUsersReload');if(r)r.disabled=false;}}
  if(b.hasAttribute('data-cancel-job')){const f=document.getElementById('jobForm');f.reset();f.elements.jobId.value='';}
  if(b.dataset.editJob){const j=ownedJobs().find(x=>x.id===Number(b.dataset.editJob));if(!j)return;const f=document.getElementById('jobForm');for(const name of ['title','location','type','min','max','description'])f.elements[name].value=j[name]??'';f.elements.skills.value=(j.skills||[]).join(', ');f.elements.jobId.value=j.id;f.scrollIntoView({behavior:'smooth',block:'center'});}
- if(b.dataset.closeJob){if(!requireRole('Recruiter'))return;const j=ownedJobs().find(x=>x.id===Number(b.dataset.closeJob));if(!j||!j.open)return;if(!confirm('Đóng tin tuyển dụng này?'))return;j.open=false;j.status='closed';saveAndRefresh('Đóng tin tuyển dụng thành công!');}
- if(b.dataset.reviewJob){if(!requireRole('Admin'))return;const j=findJob(b.dataset.reviewJob);if(!j||j.status!=='pending')return;j.status=b.dataset.decision;j.open=j.status==='approved';saveAndRefresh(j.open?'Duyệt tin tuyển dụng thành công!':'Từ chối tin tuyển dụng thành công!');}
+ if(b.dataset.closeJob){if(!requireRole('Recruiter'))return;if(!await jobConfirm({title:'Đóng tin tuyển dụng',message:'Tin tuyển dụng sẽ không còn nhận đơn ứng tuyển mới. Bạn có muốn tiếp tục?',action:'Đóng tin',danger:true}))return;try{await JobAPI.request('/api/jobs/'+b.dataset.closeJob+'/close',{method:'PATCH'});await JobAPI.refresh();saveAndRefresh('Đóng tin tuyển dụng thành công!');}catch(err){toast(err.message);}}
+ if(b.dataset.reviewJob){if(!requireRole('Admin'))return;try{const approve=b.dataset.decision==='approved';await JobAPI.request('/api/admin/jobs/'+b.dataset.reviewJob+'/'+(approve?'approve':'reject'),{method:'PATCH'});await JobAPI.refresh();saveAndRefresh(approve?'Duyệt tin thành công!':'Từ chối tin thành công!');}catch(err){toast(err.message);}}
  if(b.dataset.previewAdmin){const j=findJob(b.dataset.previewAdmin);if(!j)return;document.getElementById('detailBody').innerHTML=detailBody(j);document.getElementById('detailDialog').showModal();}
 });
-document.addEventListener('submit',e=>{
+document.addEventListener('submit',async e=>{
  const f=e.target;
- if(f.id==='candidateProfileForm'){e.preventDefault();if(!requireRole('Candidate'))return;const d=Object.fromEntries(new FormData(f)),a=current();a.name=d.name.trim();a.profile={full_name:a.name,phone:d.phone.trim(),skills:d.skills.trim(),location:d.location.trim(),cv_url:d.cv_url.trim()};state.user.name=a.name;persist();render();portalRender();toast('Cập nhật hồ sơ ứng viên thành công!', 'success');}
- if(f.id==='companyForm'){e.preventDefault();if(!requireRole('Recruiter'))return;const d=Object.fromEntries(new FormData(f)),a=current();a.company={name:d.name.trim(),address:d.address.trim(),description:d.description.trim(),logo:d.logo.trim()};ownedJobs().forEach(j=>j.company=a.company.name);saveAndRefresh('Cập nhật thông tin doanh nghiệp thành công!');}
- if(f.id==='jobForm'){e.preventDefault();if(!requireRole('Recruiter'))return;const d=Object.fromEntries(new FormData(f)),min=Number(d.min),max=Number(d.max);if(min<0||max<min)return toast('Mức lương không hợp lệ.');const old=ownedJobs().find(j=>j.id===Number(d.jobId));const fields={title:d.title.trim(),company:recruiterCompany().name,location:d.location,type:d.type,skills:d.skills.split(',').map(s=>s.trim()).filter(Boolean),min,max,description:d.description.trim(),date:new Date().toISOString().slice(0,10),open:false,status:'pending',owner:state.user.email};if(!fields.title||!fields.description||!fields.skills.length)return toast('Nhập đủ thông tin tin tuyển dụng.');if(old)Object.assign(old,fields);else jobs.push({id:Math.max(0,...jobs.map(j=>j.id))+1,...fields});saveAndRefresh(old ? 'Cập nhật tin tuyển dụng thành công! Tin đang chờ duyệt.' : 'Tạo tin tuyển dụng thành công! Tin đang chờ Admin duyệt.');}
+ if(!['candidateProfileForm','companyForm','jobForm'].includes(f.id))return;
+ e.preventDefault();
+ try{
+  if(f.id==='candidateProfileForm'){
+   if(!requireRole('Candidate'))return;
+   const d=Object.fromEntries(new FormData(f));
+   await JobAPI.request('/candidate/profile',{method:'PATCH',body:{full_name:d.name.trim(),phone:d.phone.trim(),skills:d.skills.split(',').map(x=>x.trim()).filter(Boolean),cv_url:d.cv_url.trim()||null}});
+   await JobAPI.refresh();saveAndRefresh('Cập nhật hồ sơ thành công!');
+  }
+  if(f.id==='companyForm'){
+   if(!requireRole('Recruiter'))return;
+   const d=Object.fromEntries(new FormData(f));
+   await JobAPI.request('/company/profile',{method:'PATCH',body:{company_name:d.name.trim(),address:d.address.trim(),description:d.description.trim(),logo_url:d.logo.trim()||null}});
+   await JobAPI.refresh();saveAndRefresh('Cập nhật doanh nghiệp thành công!');
+  }
+  if(f.id==='jobForm'){
+   if(!requireRole('Recruiter'))return;
+   const d=Object.fromEntries(new FormData(f));
+   const payload={title:d.title.trim(),location:d.location,type:d.type,skills:d.skills.split(',').map(x=>x.trim()).filter(Boolean),min:Number(d.min),max:Number(d.max),description:d.description.trim()};
+   const id=Number(d.jobId); await JobAPI.request(id?'/api/jobs/'+id:'/api/jobs',{method:id?'PUT':'POST',body:payload});
+   await JobAPI.refresh();saveAndRefresh('Đã lưu tin, đang chờ Admin duyệt.');
+  }
+ }catch(err){toast(err.message);}
+});
+document.addEventListener('input',e=>{
+ if(e.target.id==='adminUserSearch'){adminSearch=e.target.value;adminPage=1;renderAdminUserTable();}
 });
 document.addEventListener('change',e=>{
- const el=e.target;if(!el.matches('[data-app-status]'))return;if(!requireRole('Recruiter'))return;const owner=state.accounts.find(a=>a.email===el.dataset.appEmail),row=owner?.applications?.find(a=>a.jobId===Number(el.dataset.appStatus));if(!row||['withdrawn','accepted','rejected'].includes(row.status))return;row.status=el.value;persist();renderApplicantTable();toast('Cập nhật trạng thái ứng tuyển thành công!', 'success');
+ if(e.target.id==='adminUserRole'){adminRoleFilter=e.target.value;adminPage=1;renderAdminUserTable();}
+ if(e.target.id==='adminUserStatus'){adminStatusFilter=e.target.value;adminPage=1;renderAdminUserTable();}
+});
+document.addEventListener('change',async e=>{
+ const el=e.target;if(!el.matches('[data-app-status]'))return;if(!requireRole('Recruiter'))return;
+ const row=allAppsForRecruiter().find(a=>a.jobId===Number(el.dataset.appStatus)&&a.applicant.email===el.dataset.appEmail);
+ if(!row)return;
+ try{await JobAPI.request('/api/applications/'+row.id+'/status',{method:'PATCH',body:{status:el.value}});await JobAPI.refresh();portalRender();toast('Cập nhật trạng thái thành công!','success');}catch(err){toast(err.message);}
 });
 // Lệnh điều hướng và hiển thị được tích hợp với app.js cũ.
 loadMockJobs();
