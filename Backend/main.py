@@ -1,7 +1,10 @@
 
 from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, or_, select, String
+from sqlalchemy import cast, or_, select, String, delete
 from sqlalchemy.exc import IntegrityError
 import bcrypt
 from datetime import datetime, timedelta, timezone
@@ -9,7 +12,7 @@ from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 
 from database import get_db
-from models import Application, Job, User
+from models import Application, Job, User, SavedJob
 from schemas import RegisterRequest, LoginRequest
 from schemas import (
     CandidateProfileResponse,
@@ -21,25 +24,19 @@ from schemas import (
     CompanyProfileUpdate,
     JobCreate,
     JobResponse,
+    AdminUserResponse,
+    AdminUserStatusUpdate,
 )
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 
-app = FastAPI(
-    title="Job Portal API",
-    description="API tuyển dụng. Các endpoint được phân nhóm theo chức năng trong Swagger UI.",
-    openapi_tags=[
-        {"name": "Hệ thống", "description": "Kiểm tra trạng thái backend."},
-        {"name": "Tiện ích nội bộ", "description": "Các endpoint hỗ trợ phát triển và kiểm tra."},
-        {"name": "Xác thực", "description": "Đăng ký, đăng nhập và xác minh JWT."},
-        {"name": "Ứng viên", "description": "Hồ sơ ứng viên."},
-        {"name": "Công ty", "description": "Hồ sơ doanh nghiệp."},
-        {"name": "Việc làm", "description": "Danh sách, tìm kiếm, chi tiết và quản lý tin tuyển dụng."},
-        {"name": "Ứng tuyển", "description": "Nộp đơn, xem đơn và xét duyệt đơn ứng tuyển."},
-        {"name": "Quản trị", "description": "Quản trị và duyệt tin tuyển dụng."},
-    ],
-)
+app = FastAPI(title='JobConnect Python API')
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / 'frontend'
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(CORSMiddleware,
+    allow_origins=['http://127.0.0.1:5500','http://localhost:5500','http://127.0.0.1:5501','http://localhost:5501'],
+    allow_credentials=False, allow_methods=['GET','POST','PUT','PATCH','DELETE'], allow_headers=['Authorization','Content-Type'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
@@ -58,54 +55,11 @@ def create_access_token(data: dict):
         algorithm=ALGORITHM
     )
 
-# API kiểm tra backend đang hoạt động (không nằm trong các task API ở hình).
-@app.get(
-    "/",
-    tags=["Hệ thống"],
-    summary="Kiểm tra trạng thái API",
-    description="Kiểm tra nhanh backend đang hoạt động.",
-)
+@app.get("/")
 def home():
-    return {"message": "Job Portal API đang hoạt động"}
+    return FileResponse(FRONTEND_DIR / "index.html")
 
-# API tiện ích nội bộ: lấy danh sách người dùng.
-@app.get(
-    "/users",
-    tags=["Tiện ích nội bộ"],
-    summary="Lấy danh sách người dùng",
-    description="Endpoint tiện ích nội bộ, trả về toàn bộ người dùng.",
-)
-def get_users(db: Session = Depends(get_db)):
-    statement = select(User)
-    users = db.execute(statement).scalars().all()
-
-    return users
-
-# API tiện ích nội bộ: tìm người dùng theo email.
-@app.get(
-    "/users/{email}",
-    tags=["Tiện ích nội bộ"],
-    summary="Tìm người dùng theo email",
-    description="Tra cứu tài khoản bằng địa chỉ email.",
-)
-def get_user_by_email(email: str, db: Session = Depends(get_db)):
-    statement = select(User).where(User.email == email)
-
-    user = db.execute(statement).scalar_one_or_none()
-
-    if user is None:
-        return {"message": "Không tìm thấy người dùng"}
-
-    return user
-
-# API đăng ký tài khoản (Sprint 3).
-@app.post(
-    "/auth/register",
-    status_code=201,
-    tags=["Xác thực"],
-    summary="Đăng ký tài khoản",
-    description="Tạo tài khoản mới với vai trò ứng viên hoặc nhà tuyển dụng.",
-)
+@app.post("/auth/register", status_code=201)
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
 
     statement = select(User).where(User.email == data.email)
@@ -126,7 +80,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         full_name=data.full_name,
         email=data.email,
         password=hashed_password,
-        role=data.role
+        role="candidate"
     )
 
     db.add(new_user)
@@ -148,13 +102,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         "role": new_user.role
     }
 
-# API đăng nhập và cấp JWT (Sprint 2).
-@app.post(
-    "/auth/login",
-    tags=["Xác thực"],
-    summary="Đăng nhập",
-    description="Xác thực email và mật khẩu, sau đó trả về JWT Bearer token.",
-)
+@app.post("/auth/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
 
     statement = select(User).where(User.email == data.email)
@@ -191,6 +139,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user_id": user.user_id,
         "full_name": user.full_name,
+        "email": user.email,
         "role": user.role
     }
 
@@ -244,26 +193,18 @@ def get_current_candidate(
 
     return user
 
-# API hồ sơ ứng viên: xem hồ sơ (Sprint 2).
 @app.get(
     "/candidate/profile",
-    response_model=CandidateProfileResponse,
-    tags=["Ứng viên"],
-    summary="Xem hồ sơ ứng viên",
-    description="Trả về hồ sơ của ứng viên đang đăng nhập.",
+    response_model=CandidateProfileResponse
 )
 def get_candidate_profile(
     user: User = Depends(get_current_candidate)
 ) -> User:
     return user
 
-# API hồ sơ ứng viên: cập nhật hồ sơ (Sprint 2).
 @app.patch(
     "/candidate/profile",
-    response_model=CandidateProfileResponse,
-    tags=["Ứng viên"],
-    summary="Cập nhật hồ sơ ứng viên",
-    description="Cập nhật thông tin hồ sơ của ứng viên đang đăng nhập.",
+    response_model=CandidateProfileResponse
 )
 def update_candidate_profile(
     data: CandidateProfileUpdate,
@@ -299,26 +240,18 @@ def get_current_admin(
 
     return user
 
-# API thông tin công ty: xem hồ sơ doanh nghiệp (Sprint 2).
 @app.get(
     "/company/profile",
-    response_model=CompanyProfileResponse,
-    tags=["Công ty"],
-    summary="Xem thông tin công ty",
-    description="Trả về hồ sơ doanh nghiệp của nhà tuyển dụng đang đăng nhập.",
+    response_model=CompanyProfileResponse
 )
 def get_company_profile(
     user: User = Depends(get_current_recruiter)
 ) -> User:
     return user
 
-# API thông tin công ty: cập nhật hồ sơ doanh nghiệp (Sprint 2).
 @app.patch(
     "/company/profile",
-    response_model=CompanyProfileResponse,
-    tags=["Công ty"],
-    summary="Cập nhật thông tin công ty",
-    description="Cập nhật hồ sơ doanh nghiệp của nhà tuyển dụng đang đăng nhập.",
+    response_model=CompanyProfileResponse
 )
 def update_company_profile(
     data: CompanyProfileUpdate,
@@ -332,16 +265,9 @@ def update_company_profile(
     db.refresh(user)
     return user
 
-# API danh sách và tìm kiếm việc làm (Sprint 3).
 @app.get(
     "/api/jobs",
     response_model=list[JobResponse],
-    tags=["Việc làm"],
-    summary="Tìm kiếm và lọc việc làm",
-    description=(
-        "Lấy danh sách tin đã duyệt. Có thể lọc bằng keyword, location, "
-        "min_salary và max_salary."
-    ),
 )
 def get_jobs(
     keyword: str | None = Query(default=None, min_length=1),
@@ -383,13 +309,9 @@ def get_jobs(
     statement = statement.order_by(Job.date.desc(), Job.job_id.desc())
     return db.execute(statement).scalars().all()
 
-# API duyệt tin Admin: xem danh sách tin đang chờ duyệt (Sprint 3).
 @app.get(
     "/api/admin/jobs/pending",
     response_model=list[JobResponse],
-    tags=["Quản trị"],
-    summary="Danh sách tin chờ duyệt",
-    description="Admin xem các tin tuyển dụng đang có trạng thái pending.",
 )
 def get_pending_jobs(
     db: Session = Depends(get_db),
@@ -402,13 +324,9 @@ def get_pending_jobs(
     )
     return db.execute(statement).scalars().all()
 
-# API duyệt tin Admin: duyệt tin tuyển dụng (Sprint 3).
 @app.patch(
     "/api/admin/jobs/{id}/approve",
     response_model=JobResponse,
-    tags=["Quản trị"],
-    summary="Duyệt tin tuyển dụng",
-    description="Admin chuyển tin đang pending sang trạng thái approved.",
 )
 def approve_job(
     id: int,
@@ -432,17 +350,19 @@ def approve_job(
         )
 
     job.status = "approved"
+    job.open = True
     db.commit()
     db.refresh(job)
     return job
 
-# API chi tiết việc làm (Sprint 3).
+@app.get('/api/jobs/mine', response_model=list[JobResponse])
+def my_jobs(db: Session=Depends(get_db), user:User=Depends(get_current_recruiter)):
+    return db.execute(select(Job).where(Job.recruiter_id==user.user_id).order_by(Job.job_id.desc())).scalars().all()
+
+
 @app.get(
     "/api/jobs/{id}",
     response_model=JobResponse,
-    tags=["Việc làm"],
-    summary="Chi tiết việc làm",
-    description="Xem nội dung và thông tin công ty của một tin đã duyệt.",
 )
 def get_job(
     id: int,
@@ -463,13 +383,9 @@ def get_job(
 
     return job
 
-# API lịch sử ứng tuyển của ứng viên đang đăng nhập (Sprint 3).
 @app.get(
     "/api/applications/my",
     response_model=list[ApplicationResponse],
-    tags=["Ứng tuyển"],
-    summary="Lịch sử ứng tuyển của tôi",
-    description="Ứng viên xem danh sách đơn đã nộp bằng tài khoản hiện tại.",
 )
 def get_my_applications(
     db: Session = Depends(get_db),
@@ -482,13 +398,9 @@ def get_my_applications(
     )
     return db.execute(statement).scalars().all()
 
-# API xem hồ sơ ứng tuyển: lấy danh sách đơn theo tin tuyển dụng (Sprint 3).
 @app.get(
     "/api/jobs/{job_id}/applications",
     response_model=list[ApplicationResponse],
-    tags=["Ứng tuyển"],
-    summary="Xem đơn ứng tuyển theo tin",
-    description="Recruiter xem các đơn ứng tuyển cho tin tuyển dụng của mình.",
 )
 def get_job_applications(
     job_id: int,
@@ -518,13 +430,9 @@ def get_job_applications(
     )
     return db.execute(statement).scalars().all()
 
-# API cập nhật trạng thái đơn ứng tuyển: recruiter xét duyệt (Sprint 3).
 @app.patch(
     "/api/applications/{id}/status",
     response_model=ApplicationResponse,
-    tags=["Ứng tuyển"],
-    summary="Cập nhật trạng thái đơn",
-    description="Recruiter xét duyệt đơn thuộc tin của mình: approved hoặc rejected.",
 )
 def update_application_status(
     id: int,
@@ -563,14 +471,10 @@ def update_application_status(
     db.refresh(application)
     return application
 
-# API nộp đơn ứng tuyển (Sprint 3).
 @app.post(
     "/api/applications",
     status_code=201,
     response_model=ApplicationResponse,
-    tags=["Ứng tuyển"],
-    summary="Nộp đơn ứng tuyển",
-    description="Ứng viên nộp đơn cho một tin tuyển dụng; mỗi tin chỉ nộp một lần.",
 )
 def create_application(
     data: ApplicationCreate,
@@ -581,11 +485,8 @@ def create_application(
         select(Job).where(Job.job_id == data.job_id)
     ).scalar_one_or_none()
 
-    if job is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Không tìm thấy tin tuyển dụng"
-        )
+    if job is None or job.status != "approved" or not job.open:
+        raise HTTPException(status_code=404, detail="Tin tuyển dụng chưa được duyệt hoặc đã đóng")
 
     existing_application = db.execute(
         select(Application).where(
@@ -626,14 +527,10 @@ def create_application(
     db.refresh(application)
     return application
 
-# API tạo tin tuyển dụng (Sprint 2).
 @app.post(
     "/api/jobs",
     status_code=201,
     response_model=JobResponse,
-    tags=["Việc làm"],
-    summary="Tạo tin tuyển dụng",
-    description="Recruiter tạo tin mới. Tin mới được đưa vào trạng thái pending.",
 )
 def create_job(
     data: JobCreate,
@@ -665,13 +562,9 @@ def create_job(
     db.refresh(job)
     return job
 
-# API sửa tin tuyển dụng (Sprint 2).
 @app.put(
     "/api/jobs/{id}",
     response_model=JobResponse,
-    tags=["Việc làm"],
-    summary="Cập nhật tin tuyển dụng",
-    description="Chủ sở hữu tin tuyển dụng cập nhật nội dung tin theo ID.",
 )
 def update_job(
     id: int,
@@ -702,18 +595,14 @@ def update_job(
     job.min_salary = data.min
     job.max_salary = data.max
     job.description = data.description
+    job.status = 'pending'
+    job.open = False
 
     db.commit()
     db.refresh(job)
     return job
 
-# API tiện ích xác minh thông tin tài khoản từ JWT.
-@app.get(
-    "/auth/me",
-    tags=["Xác thực"],
-    summary="Thông tin tài khoản hiện tại",
-    description="Xác minh JWT và trả về thông tin tài khoản đang đăng nhập.",
-)
+@app.get("/auth/me")
 def get_me(user: User = Depends(get_current_user)):
     return {
         "user_id": user.user_id,
@@ -721,3 +610,135 @@ def get_me(user: User = Depends(get_current_user)):
         "email": user.email,
         "role": user.role
     }
+
+
+
+# Endpoints bổ sung để Frontend gốc có thể sử dụng dữ liệu MySQL thật.
+from pydantic import BaseModel
+
+@app.get('/api/admin/users', response_model=list[AdminUserResponse], tags=['Admin'])
+def admin_users(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> list[User]:
+    # Chỉ Admin có JWT hợp lệ mới xem được tài khoản. Không trả mật khẩu.
+    statement = select(User).order_by(User.user_id.desc())
+    return list(db.execute(statement).scalars().all())
+
+# T05F45D - Chỉ Admin được khóa/mở khóa hoặc xóa người dùng.
+# Khóa là trạng thái có thể khôi phục; xóa là vĩnh viễn và xóa dữ liệu liên quan.
+@app.patch('/api/admin/users/{user_id}/status', response_model=AdminUserResponse, tags=['Admin'])
+def admin_change_user_status(
+    user_id: int,
+    data: AdminUserStatusUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> User:
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail='Không tìm thấy tài khoản')
+    # Không được khóa chính mình hay tài khoản Admin khác.
+    if target.role == 'admin' or target.user_id == admin.user_id:
+        raise HTTPException(status_code=403, detail='Không được thay đổi trạng thái tài khoản Admin')
+    target.status = data.status
+    try:
+        db.commit()
+        db.refresh(target)
+    except Exception:
+        db.rollback()
+        raise
+    return target
+
+
+@app.delete('/api/admin/users/{user_id}', tags=['Admin'])
+def admin_delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail='Không tìm thấy tài khoản')
+    if target.role == 'admin' or target.user_id == admin.user_id:
+        raise HTTPException(status_code=403, detail='Không được xóa tài khoản Admin')
+
+    # Giải quyết khóa ngoại theo thứ tự: các đơn & tin lưu, tin đăng, tài khoản.
+    # Việc xóa diễn ra trong một giao dịch; có lỗi sẽ rollback.
+    try:
+        if target.role == 'recruiter':
+            job_ids = select(Job.job_id).where(Job.recruiter_id == user_id)
+            db.execute(delete(Application).where(Application.job_id.in_(job_ids)))
+            db.execute(delete(SavedJob).where(SavedJob.job_id.in_(job_ids)))
+            db.execute(delete(Job).where(Job.recruiter_id == user_id))
+        db.execute(delete(Application).where(Application.candidate_id == user_id))
+        db.execute(delete(SavedJob).where(SavedJob.candidate_id == user_id))
+        db.delete(target)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail='Không thể xóa tài khoản vì còn dữ liệu tham chiếu')
+    except Exception:
+        db.rollback()
+        raise
+    return {'message': 'Đã xóa tài khoản và dữ liệu liên quan', 'user_id': user_id}
+
+
+@app.get('/api/saved')
+def saved_jobs(db:Session=Depends(get_db), user:User=Depends(get_current_candidate)):
+    return [x.job_id for x in db.execute(select(SavedJob).where(SavedJob.candidate_id==user.user_id)).scalars()]
+
+@app.post('/api/saved/{id}')
+def save_job(id:int,db:Session=Depends(get_db),user:User=Depends(get_current_candidate)):
+    if not db.get(Job,id):raise HTTPException(404,'Tin tuyển dụng không tồn tại')
+    if not db.execute(select(SavedJob).where(SavedJob.candidate_id==user.user_id,SavedJob.job_id==id)).scalar_one_or_none():
+        db.add(SavedJob(candidate_id=user.user_id,job_id=id));db.commit()
+    return {'saved':True}
+
+@app.delete('/api/saved/{id}')
+def remove_saved(id:int,db:Session=Depends(get_db),user:User=Depends(get_current_candidate)):
+    row=db.execute(select(SavedJob).where(SavedJob.candidate_id==user.user_id,SavedJob.job_id==id)).scalar_one_or_none()
+    if row:db.delete(row);db.commit()
+    return {'saved':False}
+
+@app.get('/api/recruiter/applications')
+def recruiter_applications(db:Session=Depends(get_db),user:User=Depends(get_current_recruiter)):
+    rows=db.execute(select(Application,Job,User).join(Job,Application.job_id==Job.job_id).join(User,Application.candidate_id==User.user_id).where(Job.recruiter_id==user.user_id)).all()
+    return [{'id':a.application_id,'job_id':a.job_id,'status':a.status,'applied_at':a.applied_at.isoformat(),
+      'candidate':{'name':u.full_name,'email':u.email,'skills':u.skills or []}} for a,j,u in rows]
+
+@app.patch('/api/admin/jobs/{id}/reject',response_model=JobResponse)
+def reject_job(id:int,db:Session=Depends(get_db),user:User=Depends(get_current_admin)):
+    job=db.get(Job,id)
+    if not job or job.status!='pending':raise HTTPException(409,'Chỉ từ chối được tin chờ duyệt')
+    job.status='rejected';job.open=False;db.commit();db.refresh(job);return job
+
+@app.patch('/api/jobs/{id}/close',response_model=JobResponse)
+def close_job(id:int,db:Session=Depends(get_db),user:User=Depends(get_current_recruiter)):
+    job=db.get(Job,id)
+    if not job:raise HTTPException(404,'Không tìm thấy tin tuyển dụng')
+    if job.recruiter_id!=user.user_id:raise HTTPException(403,'Không có quyền sửa tin')
+    job.open=False;job.status='closed';db.commit();db.refresh(job);return job
+
+@app.patch('/api/applications/{id}/withdraw')
+def withdraw_app(id:int,db:Session=Depends(get_db),user:User=Depends(get_current_candidate)):
+    app_row=db.get(Application,id)
+    if not app_row:raise HTTPException(404,'Không tìm thấy đơn')
+    if app_row.candidate_id!=user.user_id:raise HTTPException(403,'Không có quyền rút đơn')
+    if app_row.status in ['approved','rejected','withdrawn']:raise HTTPException(409,'Đơn đã kết thúc')
+    app_row.status='withdrawn';db.commit();return {'status':'withdrawn'}
+
+@app.get('/health')
+def health():return {'ok':True}
+
+
+@app.get('/api/admin/jobs',response_model=list[JobResponse])
+def admin_all_jobs(db:Session=Depends(get_db),user:User=Depends(get_current_admin)):
+    return db.execute(select(Job).order_by(Job.job_id.desc())).scalars().all()
+
+
+# Phục vụ HTML/CSS/JS/ảnh trên cùng cổng 8000 với API.
+# Đặt SAU tất cả API routes để không che đường dẫn /api, /auth và /docs.
+from password_reset import router as password_reset_router
+app.include_router(password_reset_router)
+
+app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

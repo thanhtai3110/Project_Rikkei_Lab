@@ -1,5 +1,0 @@
-ALTER TABLE users
-    ADD COLUMN company_name VARCHAR(200) NULL,
-    ADD COLUMN address VARCHAR(500) NULL,
-    ADD COLUMN description TEXT NULL,
-    ADD COLUMN logo_url VARCHAR(2048) NULL;

@@ -13,7 +13,7 @@ from pydantic import (
 class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=100)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=72)
+    password: str = Field(min_length=8, max_length=8)
     role: Literal["candidate", "recruiter"] = "candidate"
 
 
@@ -141,7 +141,7 @@ class ApplicationCreate(BaseModel):
 class ApplicationStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    status: Literal["approved", "rejected"]
+    status: Literal["reviewing", "interviewed", "accepted", "rejected"]
 
 
 class ApplicationResponse(BaseModel):
@@ -152,3 +152,20 @@ class ApplicationResponse(BaseModel):
     job_id: int
     status: str
     applied_at: datetime
+
+
+# API danh sách tài khoản: chỉ trả thông tin cần thiết cho dashboard Admin.
+class AdminUserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: int
+    full_name: str
+    email: EmailStr
+    role: str
+    status: str
+
+
+class AdminUserStatusUpdate(BaseModel):
+    # Không cho Client tự đặt role hoặc trạng thái tùy ý.
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["active", "locked"]
