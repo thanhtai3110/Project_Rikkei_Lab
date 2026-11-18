@@ -631,14 +631,16 @@ function persist() { /* Backend MySQL là nguồn dữ liệu chính; không lư
 function account() {
     return state.accounts.find(a => a.email === state.user?.email)
 }
-function candidate() {
-    if (!state.user) {
-        $('#authDialog').showModal();
-        return false
-    }
-    if (!account()) {
-        state.user = null;
-        persist();
+function candidate(loginMessage) {
+    if (!state.user || !account()) {
+        if (state.user) {
+            state.user = null;
+            persist();
+        }
+        if (loginMessage) {
+            authMode('login');
+            authFeedback(loginMessage, false);
+        }
         $('#authDialog').showModal();
         return false;
     }
@@ -792,8 +794,9 @@ function details(id) {
     $('#detailBody').innerHTML = `<span class="eyebrow">${esc(j.company)}</span><h2>${esc(j.title)}</h2><p>${j.location} · ${j.type} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>Tham gia xây dựng và phát triển sản phẩm, phối hợp với các thành viên trong nhóm để mang lại trải nghiệm tốt cho khách hàng.</p><h3>Yêu cầu</h3><p>Nắm vững ${j.skills.join(', ')}. Chủ động học hỏi, có tinh thần trách nhiệm và khả năng làm việc nhóm.</p><h3>Quyền lợi</h3><p>Môi trường cởi mở, cơ hội phát triển và thu nhập theo năng lực.</p><p class="muted">Tin tuyển dụng và nội dung mô tả là dữ liệu mẫu.</p><button class="primary" data-apply="${id}" ${!j.open || applied ? 'disabled' : ''}>${applied ? 'Bạn đã ứng tuyển' : j.open ? 'Ứng tuyển ngay' : 'Tin đã đóng'}</button>`;
     $('#detailDialog').showModal()
 }
+const applyLoginMessage = 'Bạn cần đăng nhập để ứng tuyển.';
 async function startApply(id) {
-    if (!candidate()) return;
+    if (!candidate(applyLoginMessage)) return;
     const j = jobs.find(j => j.id === id);
     if (!j?.open) return toast('Tin tuyển dụng đã đóng.');
     if (account().applications.some(a => a.jobId === id)) return toast('Mỗi tin chỉ được ứng tuyển một lần, kể cả sau khi rút đơn.');
@@ -901,7 +904,7 @@ $('#cvInput').addEventListener('change', async e => {
     }
 });
 $('#applyForm').addEventListener('submit', async e => {
- e.preventDefault();if(!candidate())return;
+ e.preventDefault();if(!candidate(applyLoginMessage))return;
  await loadCV();const cv=cvs.find(c=>c.id===$('#cvSelect').value);
  if(!cv)return toast('Vui lòng chọn CV PDF.');
  try{
@@ -912,8 +915,52 @@ $('#applyForm').addEventListener('submit', async e => {
 });
 // Xác thực qua Python API, không tạo tài khoản demo tại trình duyệt.
 const authDialog = $('#authDialog');
+const authForm = $('#authForm');
+const authFields = ['name', 'email', 'password', 'confirmPassword'].map(id => $('#' + id));
+
+function authFieldError(field, message) {
+  const errorId = field.id + 'Error';
+  let error = document.getElementById(errorId);
+  if (!message && !error) return;
+  if (!error) {
+    error = document.createElement('span');
+    error.id = errorId;
+    error.className = 'auth-field-error';
+    (field.closest('.password-wrap') || field).after(error);
+  }
+  error.textContent = message;
+  error.hidden = !message;
+  if (message) {
+    field.setAttribute('aria-invalid', 'true');
+    field.setAttribute('aria-describedby', errorId);
+  } else {
+    field.removeAttribute('aria-invalid');
+    field.removeAttribute('aria-describedby');
+  }
+}
+
+function validateAuthField(field) {
+  if (!field.required) return '';
+  const value = field.id === 'name' || field.id === 'email' ? field.value.trim() : field.value;
+  if (!value) return 'Vui lòng nhập vào ô này.';
+  if (field.validity.typeMismatch) return 'Vui lòng nhập email hợp lệ.';
+  if (field.id === 'name' && value.length < 2) return 'Họ tên phải có ít nhất 2 ký tự.';
+  if (field.minLength === 8 && value.length !== 8) return 'Mật khẩu phải đúng 8 ký tự.';
+  if (field.id === 'confirmPassword' && value !== $('#password').value) return 'Xác nhận mật khẩu không khớp.';
+  return '';
+}
+
+authForm.addEventListener('input', e => {
+  if (e.target.hasAttribute('aria-invalid')) authFieldError(e.target, validateAuthField(e.target));
+  const confirmation = $('#confirmPassword');
+  if (e.target.id === 'password' && confirmation.hasAttribute('aria-invalid')) {
+    authFieldError(confirmation, validateAuthField(confirmation));
+  }
+});
+
 function authMode(mode='login') {
   authFeedback('');
+  authFields.forEach(field => authFieldError(field, ''));
   $('#authMode').value = mode;
   $('#authHeading').textContent = mode === 'register' ? 'Tạo tài khoản' : 'Chào mừng trở lại';
   $('#nameField').hidden = mode !== 'register';
@@ -942,17 +989,24 @@ function authMode(mode='login') {
   for (const id of ['password','confirmPassword']) {const input=document.getElementById(id),button=document.querySelector(`[data-toggle-password="${id}"]`);input.type='password';button.setAttribute('aria-label','Hiện mật khẩu');button.setAttribute('aria-pressed','false');button.classList.remove('is-visible');}
 }
 $('#authSwitch').onclick = () => authMode($('#authMode').value === 'login' ? 'register' : 'login');
-$('#authForm').addEventListener('submit', async e => {
+authForm.addEventListener('submit', async e => {
   e.preventDefault();
+  authFeedback('');
+  let firstInvalid;
+  for (const field of authFields) {
+    const message = validateAuthField(field);
+    authFieldError(field, message);
+    if (message && !firstInvalid) firstInvalid = field;
+  }
+  if (firstInvalid) {
+    firstInvalid.focus();
+    return;
+  }
   const email=$('#email').value.trim().toLowerCase(), password=$('#password').value;
   const mode=$('#authMode').value;
   try {
     if(mode==='register') {
       const full_name=$('#name').value.trim();
-      if(password.length!==8) return authFeedback('Mật khẩu phải đúng 8 ký tự mới được đăng ký.',false);
-      if($('#confirmPassword').value.length!==8) return authFeedback('Xác nhận mật khẩu phải đúng 8 ký tự.',false);
-      if(password!==$('#confirmPassword').value) return authFeedback('Xác nhận mật khẩu không khớp.',false);
-      if(full_name.length<2) return authFeedback('Vui lòng nhập họ tên.',false);
       await JobAPI.request('/auth/register',{method:'POST',body:{email,password,full_name,role:'candidate'},auth:false});
       $('#authForm').reset();authMode('login');$('#email').value=email;
       authFeedback('Đăng ký thành công. Vui lòng đăng nhập để tiếp tục.',true);

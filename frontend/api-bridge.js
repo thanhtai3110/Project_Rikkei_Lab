@@ -10,7 +10,7 @@ window.JobAPI = {
   catch{throw new Error('Không kết nối được Backend Python. Hãy mở http://127.0.0.1:8000/docs và kiểm tra Uvicorn đang chạy.');}
   const data=await res.json().catch(()=>null);
   if(!res.ok){
-   if(res.status===401&&auth) sessionStorage.removeItem('jobconnect_jwt');
+   if(auth&&(res.status===401||(path==='/auth/me'&&res.status===403))) sessionStorage.removeItem('jobconnect_jwt');
    const detail=data?.detail;
    throw new Error(typeof detail==='string'?detail:Array.isArray(detail)?detail.map(x=>x.msg).join('; '):'API lỗi '+res.status);
   }
@@ -19,7 +19,10 @@ window.JobAPI = {
  async refresh(){
   const token=sessionStorage.getItem('jobconnect_jwt');
   let me=null;
-  if(token){try{me=await this.request('/auth/me');}catch{sessionStorage.removeItem('jobconnect_jwt');}}
+  if(token){
+   try{me=await this.request('/auth/me');}
+   catch(error){if(sessionStorage.getItem('jobconnect_jwt'))throw error;}
+  }
   state.user=me?{email:me.email,name:me.full_name,role:({candidate:'Candidate',recruiter:'Recruiter',admin:'Admin'})[me.role]}:null;
   const a=me?{name:me.full_name,email:me.email,role:state.user.role,saved:[],applications:[],profile:{},company:{}}:null;
   state.accounts=a?[a]:[];this.recruiterApps=[];this.adminUsers=[];
@@ -52,4 +55,20 @@ window.JobAPI = {
   if(typeof render==='function')render();if(typeof portalRender==='function')portalRender();
  },
 };
-JobAPI.refresh().catch(e=>{console.error(e);jobs.splice(0,jobs.length);if(typeof render==='function')render();toast('Backend chưa kết nối: '+e.message);});
+async function initializeJobConnect(){
+ try{
+  await JobAPI.refresh();
+ }catch(error){
+  console.error(error);
+  jobs.splice(0,jobs.length);
+  render();
+  toast('Backend chưa kết nối: '+error.message);
+  if(!state.user&&sessionStorage.getItem('jobconnect_jwt')){
+   initialRouteReady=true;
+   return;
+  }
+ }
+ initialRouteReady=true;
+ route();
+}
+initializeJobConnect();

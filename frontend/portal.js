@@ -128,7 +128,7 @@ function renderAdmin() {
   const stats=`<div class="portal-cards portal-cards-four"><div>Ứng viên<strong>${candidates}</strong></div><div>Nhà tuyển dụng<strong>${recruiters}</strong></div><div>Tổng tài khoản<strong>${users.length}</strong></div><div>Tin chờ duyệt<strong>${pending.length}</strong></div></div>`;
   let content='';
   if(adminTab==='pending') content=`<div class="panel"><h3>Tin tuyển dụng chờ kiểm duyệt</h3><p class="muted">Tin pending và rejected không hiển thị trên danh sách việc làm công khai.</p><div class="table-scroll"><table class="portal-table"><thead><tr><th>Tin tuyển dụng</th><th>Doanh nghiệp</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody>${pending.map(j=>`<tr><td>${safe(j.title)}</td><td>${safe(j.company)}</td><td><span class="status">pending</span></td><td><button data-preview-admin="${j.id}">Xem tin</button><button data-review-job="${j.id}" data-decision="approved">Duyệt</button><button class="danger" data-review-job="${j.id}" data-decision="rejected">Từ chối</button></td></tr>`).join('')||'<tr><td colspan="4">Không có tin nào chờ duyệt.</td></tr>'}</tbody></table></div></div>`;
-  if(adminTab==='users') content=`<div class="panel"><div class="admin-users-heading"><div><h3>Quản lý tài khoản người dùng</h3><p>Danh sách được lấy từ <code>GET /api/admin/users</code> và cơ sở dữ liệu MySQL. Chỉ tài khoản Admin được phép truy cập.</p></div><button type="button" id="adminUsersReload">Làm mới dữ liệu</button></div>
+  if(adminTab==='users') content=`<div class="panel"><div class="admin-users-heading"><div><h3>Quản lý tài khoản người dùng</h3></div><button type="button" id="adminUsersReload">Làm mới dữ liệu</button></div>
     <div class="admin-users-filters"><label>Tìm người dùng<input id="adminUserSearch" placeholder="Tên, email hoặc ID..." autocomplete="off" value="${safe(adminSearch)}"></label>
     <label>Vai trò<select id="adminUserRole"><option value="">Tất cả vai trò</option><option value="candidate" ${adminRoleFilter==='candidate'?'selected':''}>Ứng viên</option><option value="recruiter" ${adminRoleFilter==='recruiter'?'selected':''}>Nhà tuyển dụng</option><option value="admin" ${adminRoleFilter==='admin'?'selected':''}>Admin</option></select></label>
     <label>Trạng thái<select id="adminUserStatus"><option value="">Tất cả trạng thái</option><option value="active" ${adminStatusFilter==='active'?'selected':''}>Hoạt động</option><option value="inactive" ${adminStatusFilter==='inactive'?'selected':''}>Vô hiệu hóa</option><option value="locked" ${adminStatusFilter==='locked'?'selected':''}>Đã khóa</option></select></label></div>
@@ -149,7 +149,9 @@ function renderPublicJobs() {
 renderJobs = renderPublicJobs;
 function detailBody(j) {const applied=current()?.applications?.some(a=>a.jobId===j.id);return `<span class="eyebrow">${safe(j.company)}</span><h2>${safe(j.title)}</h2><p>${safe(j.location)} · ${safe(j.type)} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>${safe(j.description||'Tham gia phát triển sản phẩm và làm việc cùng đội ngũ chuyên môn.')}</p><h3>Kỹ năng yêu cầu</h3><p>${(j.skills||[]).map(s=>safe(s)).join(', ')}</p><h3>Trạng thái</h3><p>${safe(j.status)}</p>${publicJob(j)?`<button class="primary" data-apply="${j.id}" ${applied?'disabled':''}>${applied?'Đã ứng tuyển':'Ứng tuyển ngay'}</button>`:''}`;}
 function openDetail(id) {const j=findJob(id);if(!publicJob(j)){toast('Tin này chưa được công khai.');routeTo('#/jobs');return;}portal='';page='detail';render();portalRender();document.getElementById('hero').hidden=true;document.getElementById('jobsView').hidden=true;document.getElementById('applicationsView').hidden=true;document.getElementById('cvView').hidden=true;portalView.hidden=false;document.getElementById('pageTitle').textContent='Chi tiết việc làm';portalContent.innerHTML=`<div class="panel detail-panel"><button data-go="jobs">← Quay lại việc làm</button><div class="detail-body">${detailBody(j)}</div></div>`;document.getElementById('resultCount').textContent='';}
+let initialRouteReady = false;
 function route() {
+  if (!initialRouteReady) return;
   const h=decodeURIComponent(location.hash||'#/jobs');
   if(/^#\/jobs\/\d+$/.test(h)) return openDetail(Number(h.split('/').pop()));
   if(h==='#/employer/jobs')return setPortal('recruiter','jobs');
@@ -295,4 +297,3 @@ document.addEventListener('change',async e=>{
 // Lệnh điều hướng và hiển thị được tích hợp với app.js cũ.
 loadMockJobs();
 syncNav();
-route();

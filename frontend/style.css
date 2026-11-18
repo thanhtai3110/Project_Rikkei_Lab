@@ -208,6 +208,8 @@ footer{display:flex;justify-content:space-between;gap:20px;width:min(1224px,calc
 .auth-feedback.is-success{background:#e8f7ee;color:#14683e;border:1px solid #bce6ce;}
 .auth-feedback.is-error{background:#fff0ee;color:#ae3434;border:1px solid #f3cbc7;}
 .auth-feedback[hidden]{display:none!important;}
+#authForm .auth-field-error{display:block;margin-top:4px;color:#ae3434;font-size:13px;font-weight:500}
+#authForm input[aria-invalid="true"]{border-color:#ae3434}
 @media(max-width:700px){#toast{top:12px;left:16px;right:16px;max-width:none;}}
 
 /* Thông báo đặt BÊN TRONG hộp thoại đang được thao tác */
