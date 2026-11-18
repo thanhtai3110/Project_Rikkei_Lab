@@ -1,6 +1,2 @@
-import os
-from dotenv import load_dotenv
-load_dotenv()
-SECRET_KEY = os.environ.get('JOB_SECRET_KEY', 'local-dev-only-change-before-deploy')
-ALGORITHM = 'HS256'
-ACCESS_TOKEN_EXPIRE_MINUTES = 120
+"""Tương thích với vị trí config.py cũ."""
+from app.core.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
