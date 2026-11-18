@@ -1,27 +1,31 @@
 /* JobConnect -> Python FastAPI / MySQL. Không chứa mật khẩu hay khóa bí mật. */
+// Chuyển token phiên cũ sang lưu trữ bền vững; token vẫn hết hạn theo JWT Backend.
+if (!localStorage.getItem('jobconnect_jwt') && sessionStorage.getItem('jobconnect_jwt')) {
+  localStorage.setItem('jobconnect_jwt', sessionStorage.getItem('jobconnect_jwt'));
+}
 window.JobAPI = {
  base:window.location.origin,recruiterApps:[],adminUsers:[],normalizeStatus(s){return ({pending:'submitted',approved:'accepted'})[s]||s;},
  async request(path,{method='GET',body=null,auth=true}={}){
   const headers={'Content-Type':'application/json'};
-  const token=sessionStorage.getItem('jobconnect_jwt');
+  const token=localStorage.getItem('jobconnect_jwt')||sessionStorage.getItem('jobconnect_jwt');
   if(auth&&token)headers.Authorization='Bearer '+token;
   let res;
   try{res=await fetch(this.base+path,{method,headers,body:body===null?undefined:JSON.stringify(body)});}
   catch{throw new Error('Không kết nối được Backend Python. Hãy mở http://127.0.0.1:8000/docs và kiểm tra Uvicorn đang chạy.');}
   const data=await res.json().catch(()=>null);
   if(!res.ok){
-   if(auth&&(res.status===401||(path==='/auth/me'&&res.status===403))) sessionStorage.removeItem('jobconnect_jwt');
+   if(auth&&(res.status===401||(path==='/auth/me'&&res.status===403))) {localStorage.removeItem('jobconnect_jwt');sessionStorage.removeItem('jobconnect_jwt');}
    const detail=data?.detail;
    throw new Error(typeof detail==='string'?detail:Array.isArray(detail)?detail.map(x=>x.msg).join('; '):'API lỗi '+res.status);
   }
   return data;
  },
  async refresh(){
-  const token=sessionStorage.getItem('jobconnect_jwt');
+  const token=localStorage.getItem('jobconnect_jwt')||sessionStorage.getItem('jobconnect_jwt');
   let me=null;
   if(token){
    try{me=await this.request('/auth/me');}
-   catch(error){if(sessionStorage.getItem('jobconnect_jwt'))throw error;}
+   catch(error){if(localStorage.getItem('jobconnect_jwt')||sessionStorage.getItem('jobconnect_jwt'))throw error;}
   }
   state.user=me?{email:me.email,name:me.full_name,role:({candidate:'Candidate',recruiter:'Recruiter',admin:'Admin'})[me.role]}:null;
   const a=me?{name:me.full_name,email:me.email,role:state.user.role,saved:[],applications:[],profile:{},company:{}}:null;
@@ -63,7 +67,7 @@ async function initializeJobConnect(){
   jobs.splice(0,jobs.length);
   render();
   toast('Backend chưa kết nối: '+error.message);
-  if(!state.user&&sessionStorage.getItem('jobconnect_jwt')){
+  if(!state.user&&(localStorage.getItem('jobconnect_jwt')||sessionStorage.getItem('jobconnect_jwt'))){
    initialRouteReady=true;
    return;
   }

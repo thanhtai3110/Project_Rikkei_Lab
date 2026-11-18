@@ -641,7 +641,7 @@ function candidate(loginMessage) {
             authMode('login');
             authFeedback(loginMessage, false);
         }
-        $('#authDialog').showModal();
+        if (!$('#authDialog').open) $('#authDialog').showModal();
         return false;
     }
     if (state.user.role !== 'Candidate') {
@@ -791,7 +791,7 @@ function details(id) {
     const j = jobs.find(j => j.id === id);
     if (!j) return;
     const applied = account()?.applications.some(a => a.jobId === id);
-    $('#detailBody').innerHTML = `<span class="eyebrow">${esc(j.company)}</span><h2>${esc(j.title)}</h2><p>${j.location} · ${j.type} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>Tham gia xây dựng và phát triển sản phẩm, phối hợp với các thành viên trong nhóm để mang lại trải nghiệm tốt cho khách hàng.</p><h3>Yêu cầu</h3><p>Nắm vững ${j.skills.join(', ')}. Chủ động học hỏi, có tinh thần trách nhiệm và khả năng làm việc nhóm.</p><h3>Quyền lợi</h3><p>Môi trường cởi mở, cơ hội phát triển và thu nhập theo năng lực.</p><p class="muted">Tin tuyển dụng và nội dung mô tả là dữ liệu mẫu.</p><button class="primary" data-apply="${id}" ${!j.open || applied ? 'disabled' : ''}>${applied ? 'Bạn đã ứng tuyển' : j.open ? 'Ứng tuyển ngay' : 'Tin đã đóng'}</button>`;
+    $('#detailBody').innerHTML = `<span class="eyebrow">${esc(j.company)}</span><h2>${esc(j.title)}</h2><p>${j.location} · ${j.type} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>Tham gia xây dựng và phát triển sản phẩm, phối hợp với các thành viên trong nhóm để mang lại trải nghiệm tốt cho khách hàng.</p><h3>Yêu cầu</h3><p>Nắm vững ${j.skills.join(', ')}. Chủ động học hỏi, có tinh thần trách nhiệm và khả năng làm việc nhóm.</p><h3>Quyền lợi</h3><p>Môi trường cởi mở, cơ hội phát triển và thu nhập theo năng lực.</p><button class="primary" data-apply="${id}" ${!j.open || applied ? 'disabled' : ''}>${applied ? 'Bạn đã ứng tuyển' : j.open ? 'Ứng tuyển ngay' : 'Tin đã đóng'}</button>`;
     $('#detailDialog').showModal()
 }
 const applyLoginMessage = 'Bạn cần đăng nhập để ứng tuyển.';
@@ -1013,7 +1013,8 @@ authForm.addEventListener('submit', async e => {
       return;
     }
     const data=await JobAPI.request('/auth/login',{method:'POST',body:{email,password},auth:false});
-    sessionStorage.setItem('jobconnect_jwt',data.access_token);
+    localStorage.setItem('jobconnect_jwt',data.access_token);
+    sessionStorage.removeItem('jobconnect_jwt');
     await JobAPI.refresh();
     authDialog.close();$('#authForm').reset();
     render();
@@ -1035,7 +1036,7 @@ $('#userProfile').onclick = () => {
     else location.hash = destination;
 };
 $('#logoutButton').onclick = async () => {
-  sessionStorage.removeItem('jobconnect_jwt');state.user=null;state.accounts=[];page='jobs';cvs=[];
+  localStorage.removeItem('jobconnect_jwt');sessionStorage.removeItem('jobconnect_jwt');state.user=null;state.accounts=[];page='jobs';cvs=[];
   await JobAPI.refresh();render();
   if(typeof routeTo==='function')routeTo('#/jobs');else location.hash='#/jobs';
   toast('Đã đăng xuất thành công.','success');
