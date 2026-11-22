@@ -183,11 +183,11 @@ footer{display:flex;justify-content:space-between;gap:20px;width:min(1224px,calc
 #authDialog h2{margin:8px 0 8px;font-size:26px;letter-spacing:-.5px}
 #authDialog #authSubtitle{font-size:14px;margin-bottom:26px;line-height:1.65}
 #authDialog label{font-weight:650;color:#34415a}
-#authDialog input,#authDialog select{min-height:47px;margin-top:7px;margin-bottom:15px;border-radius:9px}
-#authDialog .password-wrap{position:relative}
-#authDialog .password-wrap input{padding-right:50px}
-#authDialog .password-wrap .eye{position:absolute;top:7px;right:6px;min-height:34px;width:38px;border-radius:8px;background:transparent;border:0;color:#69778f;display:flex;align-items:center;justify-content:center;cursor:pointer}
-#authDialog .password-wrap .eye:hover{background:#f0f3fb;color:#3158cf}
+#authDialog .auth-field-error{color:#ae3434}
+html[data-theme="dark"] #authDialog .auth-field-error{color:#ff9a9a}
+#authDialog input[aria-invalid="true"]{border-color:#c83b3b}
+#authDialog input[aria-invalid="true"]:focus{box-shadow:0 0 0 4px rgba(200,59,59,.12);outline-color:rgba(200,59,59,.35)}
+html[data-theme="dark"] #authDialog input[aria-invalid="true"]{border-color:#ff9a9a!important}
 #authDialog .password-wrap .eye:focus-visible{outline:2px solid #6686e7;outline-offset:1px}
 #authDialog .password-wrap .eye.is-visible::after{content:"";position:absolute;left:9px;top:17px;width:23px;height:1.8px;background:currentColor;transform:rotate(-45deg);border-radius:3px}
 #authDialog .primary{min-height:46px;margin-top:8px;border-radius:9px;font-size:15px}
