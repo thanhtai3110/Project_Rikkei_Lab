@@ -653,7 +653,7 @@ function candidate(loginMessage) {
 let toastTimer;
 // Thông báo xuất hiện ngay tại hộp thoại đang thao tác; nếu không có dialog thì hiển thị trên trang.
 function toast(message, kind) {
-    const success = kind === 'success' || (!kind && /^(Đã |Đăng (ký|nhập) thành công|Lưu |Cập nhật |Tạo |Gửi )/i.test(message));
+    const success = kind === 'success';
     const activeDialog = [...document.querySelectorAll('dialog[open]')].at(-1);
     const globalToast = $('#toast');
     clearTimeout(toastTimer);
