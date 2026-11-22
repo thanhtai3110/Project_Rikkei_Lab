@@ -188,6 +188,11 @@ html[data-theme="dark"] #authDialog .auth-field-error{color:#ff9a9a}
 #authDialog input[aria-invalid="true"]{border-color:#c83b3b}
 #authDialog input[aria-invalid="true"]:focus{box-shadow:0 0 0 4px rgba(200,59,59,.12);outline-color:rgba(200,59,59,.35)}
 html[data-theme="dark"] #authDialog input[aria-invalid="true"]{border-color:#ff9a9a!important}
+#authDialog input,#authDialog select{min-height:47px;margin-top:7px;margin-bottom:15px;border-radius:9px}
+#authDialog .password-wrap{position:relative}
+#authDialog .password-wrap input{padding-right:50px}
+#authDialog .password-wrap .eye{position:absolute;top:7px;right:6px;min-height:34px;width:38px;border-radius:8px;background:transparent;border:0;color:#69778f;display:flex;align-items:center;justify-content:center;cursor:pointer}
+#authDialog .password-wrap .eye:hover{background:#f0f3fb;color:#3158cf}
 #authDialog .password-wrap .eye:focus-visible{outline:2px solid #6686e7;outline-offset:1px}
 #authDialog .password-wrap .eye.is-visible::after{content:"";position:absolute;left:9px;top:17px;width:23px;height:1.8px;background:currentColor;transform:rotate(-45deg);border-radius:3px}
 #authDialog .primary{min-height:46px;margin-top:8px;border-radius:9px;font-size:15px}
@@ -214,6 +219,7 @@ html[data-theme="dark"] #authDialog input[aria-invalid="true"]{border-color:#ff9
 .dialog-feedback{margin:12px 0 20px;padding:13px 15px;border-radius:10px;font-size:14px;line-height:1.6;font-weight:600;}
 .dialog-feedback.is-success{background:#e8f7ee;color:#14683e;border:1px solid #bce6ce;}
 .dialog-feedback.is-error{background:#fff0ee;color:#ae3434;border:1px solid #f3cbc7;}
+html[data-theme="dark"] :is(#toast.toast-error,.auth-feedback.is-error,.dialog-feedback.is-error){background:#45262d;color:#ffb3b3;border-color:#a45961}
 #authDialog .auth-feedback{position:relative;}
 
 /* Truy cập tài khoản Admin DEMO trong form đăng nhập */
@@ -668,7 +674,9 @@ aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:
 #themeToggle.theme-toggle:hover{background:#eaf1fa!important;border-color:#c4d4ec!important;transform:none!important}
 #themeToggle .theme-toggle-icon{font-size:20px;line-height:1;font-weight:500}
 #themeToggle .theme-toggle-label{line-height:1.1}
-@media(max-width:600px){#themeToggle.theme-toggle{min-height:40px;min-width:76px;padding:7px 11px;font-size:12px!important;gap:5px}}
+@media(max-width:600px){
+  #themeToggle.theme-toggle,header nav:not(:has(> button:not([hidden]))){display:none!important}
+}
 /* Chế độ tối: giữ nguyên bố cục và các thành phần nghiệp vụ */
 html[data-theme="dark"]{color-scheme:dark;--ink:#e7eef9;--muted:#a5b4cb;--line:#344661;--page:#101a2d;--paper:#1d2a3f;--soft:#223450}
 html[data-theme="dark"] body{background:#101a2d!important;color:#e7eef9!important}
