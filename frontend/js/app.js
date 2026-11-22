@@ -951,9 +951,9 @@ function validateAuthField(field) {
 }
 
 authForm.addEventListener('input', e => {
-  if (e.target.hasAttribute('aria-invalid') || ($('#authMode').value === 'register' && ['password','confirmPassword'].includes(e.target.id) && e.target.value.length > 0)) authFieldError(e.target, validateAuthField(e.target));
+  if (e.target.hasAttribute('aria-invalid') || ($('#authMode').value === 'register' && ['password','confirmPassword'].includes(e.target.id))) authFieldError(e.target, validateAuthField(e.target));
   const confirmation = $('#confirmPassword');
-  if (e.target.id === 'password' && confirmation.hasAttribute('aria-invalid')) {
+  if (e.target.id === 'password' && (confirmation.value || confirmation.hasAttribute('aria-invalid'))) {
     authFieldError(confirmation, validateAuthField(confirmation));
   }
 });
