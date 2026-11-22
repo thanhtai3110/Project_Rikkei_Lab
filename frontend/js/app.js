@@ -641,7 +641,7 @@ function candidate(loginMessage) {
             authMode('login');
             authFeedback(loginMessage, false);
         }
-        if (!$('#authDialog').open) $('#authDialog').showModal();
+        $('#authDialog').showModal();
         return false;
     }
     if (state.user.role !== 'Candidate') {
@@ -791,7 +791,7 @@ function details(id) {
     const j = jobs.find(j => j.id === id);
     if (!j) return;
     const applied = account()?.applications.some(a => a.jobId === id);
-    $('#detailBody').innerHTML = `<span class="eyebrow">${esc(j.company)}</span><h2>${esc(j.title)}</h2><p>${j.location} · ${j.type} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>Tham gia xây dựng và phát triển sản phẩm, phối hợp với các thành viên trong nhóm để mang lại trải nghiệm tốt cho khách hàng.</p><h3>Yêu cầu</h3><p>Nắm vững ${j.skills.join(', ')}. Chủ động học hỏi, có tinh thần trách nhiệm và khả năng làm việc nhóm.</p><h3>Quyền lợi</h3><p>Môi trường cởi mở, cơ hội phát triển và thu nhập theo năng lực.</p><button class="primary" data-apply="${id}" ${!j.open || applied ? 'disabled' : ''}>${applied ? 'Bạn đã ứng tuyển' : j.open ? 'Ứng tuyển ngay' : 'Tin đã đóng'}</button>`;
+    $('#detailBody').innerHTML = `<span class="eyebrow">${esc(j.company)}</span><h2>${esc(j.title)}</h2><p>${j.location} · ${j.type} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>Tham gia xây dựng và phát triển sản phẩm, phối hợp với các thành viên trong nhóm để mang lại trải nghiệm tốt cho khách hàng.</p><h3>Yêu cầu</h3><p>Nắm vững ${j.skills.join(', ')}. Chủ động học hỏi, có tinh thần trách nhiệm và khả năng làm việc nhóm.</p><h3>Quyền lợi</h3><p>Môi trường cởi mở, cơ hội phát triển và thu nhập theo năng lực.</p><p class="muted">Tin tuyển dụng và nội dung mô tả là dữ liệu mẫu.</p><button class="primary" data-apply="${id}" ${!j.open || applied ? 'disabled' : ''}>${applied ? 'Bạn đã ứng tuyển' : j.open ? 'Ứng tuyển ngay' : 'Tin đã đóng'}</button>`;
     $('#detailDialog').showModal()
 }
 const applyLoginMessage = 'Bạn cần đăng nhập để ứng tuyển.';
@@ -945,13 +945,13 @@ function validateAuthField(field) {
   if (!value) return 'Vui lòng nhập vào ô này.';
   if (field.validity.typeMismatch) return 'Vui lòng nhập email hợp lệ.';
   if (field.id === 'name' && value.length < 2) return 'Họ tên phải có ít nhất 2 ký tự.';
-  if (field.minLength === 8 && value.length !== 8) return 'Mật khẩu phải đúng 8 ký tự.';
+  if (field.minLength === 8 && value.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự.';
   if (field.id === 'confirmPassword' && value !== $('#password').value) return 'Xác nhận mật khẩu không khớp.';
   return '';
 }
 
 authForm.addEventListener('input', e => {
-  if (e.target.hasAttribute('aria-invalid')) authFieldError(e.target, validateAuthField(e.target));
+  if (e.target.hasAttribute('aria-invalid') || ($('#authMode').value === 'register' && ['password','confirmPassword'].includes(e.target.id) && e.target.value.length > 0)) authFieldError(e.target, validateAuthField(e.target));
   const confirmation = $('#confirmPassword');
   if (e.target.id === 'password' && confirmation.hasAttribute('aria-invalid')) {
     authFieldError(confirmation, validateAuthField(confirmation));
@@ -973,13 +973,13 @@ function authMode(mode='login') {
   $('#authSubtitle').textContent = mode === 'register' ? 'Tạo tài khoản để bắt đầu hành trình nghề nghiệp.' : 'Đăng nhập để quản lý hồ sơ và việc làm của bạn.';
   $('#authRoleNotice').hidden = mode !== 'register';
   $('#password').autocomplete = mode === 'register' ? 'new-password' : 'current-password';
-  // Chỉ giới hạn đúng 8 ký tự khi ĐĂNG KÝ; đăng nhập vẫn chấp nhận mật khẩu của tài khoản cũ.
+  // Đăng ký yêu cầu tối thiểu 8 ký tự; đăng nhập vẫn nhận mật khẩu tài khoản cũ.
   for (const id of ['password', 'confirmPassword']) {
     const field = document.getElementById(id);
     if (mode === 'register') {
       field.minLength = 8;
-      field.maxLength = 8;
-      field.placeholder = 'Đúng 8 ký tự';
+      field.removeAttribute('maxlength');
+      field.placeholder = 'Ít nhất 8 ký tự';
     } else {
       field.removeAttribute('minlength');
       field.removeAttribute('maxlength');
@@ -1013,8 +1013,7 @@ authForm.addEventListener('submit', async e => {
       return;
     }
     const data=await JobAPI.request('/auth/login',{method:'POST',body:{email,password},auth:false});
-    localStorage.setItem('jobconnect_jwt',data.access_token);
-    sessionStorage.removeItem('jobconnect_jwt');
+    sessionStorage.setItem('jobconnect_jwt',data.access_token);
     await JobAPI.refresh();
     authDialog.close();$('#authForm').reset();
     render();
@@ -1036,7 +1035,7 @@ $('#userProfile').onclick = () => {
     else location.hash = destination;
 };
 $('#logoutButton').onclick = async () => {
-  localStorage.removeItem('jobconnect_jwt');sessionStorage.removeItem('jobconnect_jwt');state.user=null;state.accounts=[];page='jobs';cvs=[];
+  sessionStorage.removeItem('jobconnect_jwt');state.user=null;state.accounts=[];page='jobs';cvs=[];
   await JobAPI.refresh();render();
   if(typeof routeTo==='function')routeTo('#/jobs');else location.hash='#/jobs';
   toast('Đã đăng xuất thành công.','success');
@@ -1155,7 +1154,7 @@ document.getElementById('moreCategories')?.addEventListener('click', () => {
       const password=document.getElementById('resetPassword').value;
       const confirm=document.getElementById('resetConfirm').value;
       if(!/^\d{6}$/.test(otp))return notify('Mã xác minh phải đủ 6 chữ số.');
-      if(password.length!==8)return notify('Mật khẩu mới phải đúng 8 ký tự.');
+      if(password.length<8)return notify('Mật khẩu mới phải có ít nhất 8 ký tự.');
       if(confirm!==password)return notify('Hai mật khẩu chưa trùng khớp.');
       await JobAPI.request('/auth/reset-password',{method:'POST',auth:false,body:{email:email.value.trim().toLowerCase(),code:otp,new_password:password}});
       showLogin();document.getElementById('email').value=email.value;document.getElementById('password').value='';
