@@ -1013,7 +1013,8 @@ authForm.addEventListener('submit', async e => {
       return;
     }
     const data=await JobAPI.request('/auth/login',{method:'POST',body:{email,password},auth:false});
-    sessionStorage.setItem('jobconnect_jwt',data.access_token);
+    JobAPI.clearToken();
+    localStorage.setItem('jobconnect_jwt',data.access_token);
     await JobAPI.refresh();
     authDialog.close();$('#authForm').reset();
     render();
@@ -1035,10 +1036,15 @@ $('#userProfile').onclick = () => {
     else location.hash = destination;
 };
 $('#logoutButton').onclick = async () => {
-  sessionStorage.removeItem('jobconnect_jwt');state.user=null;state.accounts=[];page='jobs';cvs=[];
-  await JobAPI.refresh();render();
+  JobAPI.clearToken();
+  state.user=null;state.accounts=[];page='jobs';cvs=[];
+  JobAPI.recruiterApps=[];JobAPI.adminUsers=[];
+  jobs.splice(0,jobs.length);
+  render();
   if(typeof routeTo==='function')routeTo('#/jobs');else location.hash='#/jobs';
   toast('Đã đăng xuất thành công.','success');
+  try{await JobAPI.refresh();}
+  catch(error){if(!JobAPI.getToken())toast(error.message);}
 };
 document.addEventListener('click', e => {
   const button=e.target.closest('[data-toggle-password]');
