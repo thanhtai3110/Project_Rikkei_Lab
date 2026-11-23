@@ -13,7 +13,7 @@ from pydantic import (
 class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=100)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=8)
+    password: str = Field(min_length=8)
     role: Literal["candidate", "recruiter"] = "candidate"
 
 
@@ -121,6 +121,7 @@ class JobResponse(BaseModel):
     id: int = Field(validation_alias="job_id")
     title: str
     company: str
+    company_logo_url: str | None = None
     location: str
     type: str = Field(validation_alias="job_type")
     skills: list[str]
