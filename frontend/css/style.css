@@ -633,6 +633,7 @@ aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:
 
 /* Logo doanh nghiệp dạng chữ cái — khôi phục đúng mẫu người dùng chọn. */
 #jobList .card .logo {
+  position: relative;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -642,7 +643,7 @@ aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:
   padding: 0 !important;
   border: 0 !important;
   border-radius: 13px !important;
-  background: #e8f6f0 !important;
+  background: hsl(var(--company-hue, 165) 45% 91%) !important;
   overflow: hidden;
   box-shadow: none !important;
 }
@@ -653,12 +654,21 @@ aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: #f7fffc;
-  color: #0f877b;
+  background: hsl(var(--company-hue, 165) 55% 97%);
+  color: hsl(var(--company-hue, 165) 55% 30%);
   font-size: 18px;
   line-height: 1;
   font-weight: 800;
   text-align: center;
+}
+#jobList .card .logo .company-logo-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  object-fit: contain;
+  background: #fff;
 }
 
 
