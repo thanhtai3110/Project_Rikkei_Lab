@@ -13,7 +13,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    select,
 )
+from sqlalchemy.orm import column_property
 from app.core.database import Base
 
 class User(Base):
@@ -43,6 +45,12 @@ class Job(Base):
         ForeignKey("users.user_id"),
         nullable=False,
         index=True,
+    )
+    company_logo_url = column_property(
+        select(User.logo_url)
+        .where(User.user_id == recruiter_id)
+        .correlate_except(User)
+        .scalar_subquery()
     )
     title = Column(String(140), nullable=False)
     company = Column(String(200), nullable=False)

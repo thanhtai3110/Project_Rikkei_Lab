@@ -121,6 +121,7 @@ class JobResponse(BaseModel):
     id: int = Field(validation_alias="job_id")
     title: str
     company: str
+    company_logo_url: str | None = None
     location: str
     type: str = Field(validation_alias="job_type")
     skills: list[str]
