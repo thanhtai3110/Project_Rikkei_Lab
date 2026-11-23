@@ -3,7 +3,7 @@
 :root{color-scheme:light;--ink:#15233c;--muted:#65728a;--subtle:#8a94a7;--blue:#3659dc;--blue-dark:#2845b7;--teal:#079b8b;--violet:#7654cf;--orange:#ef9c42;--line:#e6eaf3;--paper:#fff;--page:#f6f8fc;--soft:#eff3ff;--green:#168a6e;--light:#edf6f2;--shadow:0 12px 35px rgba(29,49,92,.065);--shadow-lg:0 22px 68px rgba(29,49,92,.12);--radius:18px}
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--page);color:var(--ink);font:15px/1.65 Inter,'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--page);color:var(--ink);font:17px/1.65 Inter,'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit}
 button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
 a{color:var(--blue);text-underline-offset:4px}
@@ -183,6 +183,11 @@ footer{display:flex;justify-content:space-between;gap:20px;width:min(1224px,calc
 #authDialog h2{margin:8px 0 8px;font-size:26px;letter-spacing:-.5px}
 #authDialog #authSubtitle{font-size:14px;margin-bottom:26px;line-height:1.65}
 #authDialog label{font-weight:650;color:#34415a}
+#authDialog .auth-field-error{color:#ae3434}
+html[data-theme="dark"] #authDialog .auth-field-error{color:#ff9a9a}
+#authDialog input[aria-invalid="true"]{border-color:#c83b3b}
+#authDialog input[aria-invalid="true"]:focus{box-shadow:0 0 0 4px rgba(200,59,59,.12);outline-color:rgba(200,59,59,.35)}
+html[data-theme="dark"] #authDialog input[aria-invalid="true"]{border-color:#ff9a9a!important}
 #authDialog input,#authDialog select{min-height:47px;margin-top:7px;margin-bottom:15px;border-radius:9px}
 #authDialog .password-wrap{position:relative}
 #authDialog .password-wrap input{padding-right:50px}
@@ -214,6 +219,7 @@ footer{display:flex;justify-content:space-between;gap:20px;width:min(1224px,calc
 .dialog-feedback{margin:12px 0 20px;padding:13px 15px;border-radius:10px;font-size:14px;line-height:1.6;font-weight:600;}
 .dialog-feedback.is-success{background:#e8f7ee;color:#14683e;border:1px solid #bce6ce;}
 .dialog-feedback.is-error{background:#fff0ee;color:#ae3434;border:1px solid #f3cbc7;}
+html[data-theme="dark"] :is(#toast.toast-error,.auth-feedback.is-error,.dialog-feedback.is-error){background:#45262d;color:#ffb3b3;border-color:#a45961}
 #authDialog .auth-feedback{position:relative;}
 
 /* Truy cập tài khoản Admin DEMO trong form đăng nhập */
@@ -422,14 +428,14 @@ main{max-width:none!important;padding:0!important}
 #jobList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start}
 #jobList .card{margin:0!important;min-height:154px!important;padding:19px!important;border-radius:15px!important;border:1px solid #e5eafa!important;box-shadow:0 5px 15px rgba(38,48,100,.06)!important;gap:12px!important}
 #jobList .card:hover{box-shadow:0 11px 28px rgba(35,56,132,.11)!important;transform:translateY(-2px)!important;border-color:#cad7ff!important}
-#jobList .card h3{font-size:15px!important;color:#121d4c!important;line-height:1.35!important}
-#jobList .company{font-size:12px!important;margin:5px 0 9px!important}
-#jobList .logo{width:42px!important;height:42px!important;border-radius:12px!important;font-size:20px!important;background:#e9efff!important;color:#2258dd!important;border:0!important}
+#jobList .card-body{align-self:stretch;display:flex;flex-direction:column}
+#jobList .card h3{font-size:18px!important;color:#121d4c!important;line-height:1.35!important}
+#jobList .company{font-size:18px!important;margin:5px 0 9px!important}
 #jobList .tags{gap:5px!important}
-#jobList .tag{font-size:10px!important;padding:4px 7px!important}
+#jobList .tags{gap:5px!important;margin-bottom:12px}
 #jobList .salary{color:#12a065!important;background:#e6f8ef!important;font-weight:850!important}
 #jobList .card-bottom{margin-top:12px!important;padding-top:8px!important;gap:6px!important}
-#jobList .card-bottom button{font-size:11px!important;min-height:31px!important;border-color:#e5e7ff!important;background:#eef2ff!important;color:#305ad6!important}
+#jobList .card-bottom{margin-top:auto;padding-top:8px!important;gap:6px!important}
 #jobList .save{width:30px!important;height:33px!important;font-size:21px!important;color:#30468c!important}
 #jobList .empty{grid-column:1/-1}
 aside{padding:17px!important;border-radius:15px!important;border:1px solid #e5eafa!important;background:#fff!important;box-shadow:none!important}
@@ -627,6 +633,7 @@ aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:
 
 /* Logo doanh nghiệp dạng chữ cái — khôi phục đúng mẫu người dùng chọn. */
 #jobList .card .logo {
+  position: relative;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -636,7 +643,7 @@ aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:
   padding: 0 !important;
   border: 0 !important;
   border-radius: 13px !important;
-  background: #e8f6f0 !important;
+  background: hsl(var(--company-hue, 165) 45% 91%) !important;
   overflow: hidden;
   box-shadow: none !important;
 }
@@ -647,12 +654,21 @@ aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: #f7fffc;
-  color: #0f877b;
+  background: hsl(var(--company-hue, 165) 55% 97%);
+  color: hsl(var(--company-hue, 165) 55% 30%);
   font-size: 18px;
   line-height: 1;
   font-weight: 800;
   text-align: center;
+}
+#jobList .card .logo .company-logo-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  object-fit: contain;
+  background: #fff;
 }
 
 
@@ -668,7 +684,9 @@ aside #reset {background:#EFF4FC!important;color:#315A9E!important;border-color:
 #themeToggle.theme-toggle:hover{background:#eaf1fa!important;border-color:#c4d4ec!important;transform:none!important}
 #themeToggle .theme-toggle-icon{font-size:20px;line-height:1;font-weight:500}
 #themeToggle .theme-toggle-label{line-height:1.1}
-@media(max-width:600px){#themeToggle.theme-toggle{min-height:40px;min-width:76px;padding:7px 11px;font-size:12px!important;gap:5px}}
+@media(max-width:600px){
+  #themeToggle.theme-toggle,header nav:not(:has(> button:not([hidden]))){display:none!important}
+}
 /* Chế độ tối: giữ nguyên bố cục và các thành phần nghiệp vụ */
 html[data-theme="dark"]{color-scheme:dark;--ink:#e7eef9;--muted:#a5b4cb;--line:#344661;--page:#101a2d;--paper:#1d2a3f;--soft:#223450}
 html[data-theme="dark"] body{background:#101a2d!important;color:#e7eef9!important}
@@ -820,7 +838,7 @@ main {
 #jobConfirmDialog.confirm-danger .job-confirm-icon{background:#fff0ef;color:#e04c4c}
 #jobConfirmDialog h2{margin:0 0 12px;font-size:23px;line-height:1.35;font-weight:800;letter-spacing:-.025em;color:#192b49}
 #jobConfirmDialog #jobConfirmMessage{margin:0 0 26px;color:#63718a;font-size:14px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
-#jobConfirmDialog .job-confirm-actions{display:flex;gap:12px;justify-content:center}
+#jobConfirmDialog #jobConfirmMessage{margin:0 0 26px;color:#63718a;font-size:18px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
 #jobConfirmDialog .job-confirm-actions button{flex:1;min-height:46px;margin:0;border-radius:11px;font-size:14px;font-weight:750;transform:none}
 #jobConfirmDialog .job-confirm-cancel{background:#f1f4f9;color:#4e5d73;border:1px solid #e0e7f0}
 #jobConfirmDialog .job-confirm-cancel:hover{background:#e5ebf5}
@@ -841,7 +859,7 @@ html[data-theme="dark"] #jobConfirmDialog .job-confirm-cancel:hover{background:#
 #authDialog .forgot-password-row .plain-switch{font-size:13px;min-height:30px}
 #authDialog #resetForm h2{margin:8px 0 8px;font-size:25px}
 #authDialog #resetForm .muted{font-size:14px;line-height:1.6;margin:0 0 18px}
-#authDialog #resetForm label{display:block;color:var(--ink);font-weight:650}
+#authDialog #resetForm .muted{font-size:18px;line-height:1.6;margin:0 0 18px}
 #authDialog #resetForm input{margin:6px 0 15px;min-height:47px}
 #authDialog #resetForm .primary{display:block;width:100%;margin-top:14px}
 #authDialog #resetForm .reset-resend{display:inline-block;min-height:30px;padding:3px 0;margin:0 0 6px}

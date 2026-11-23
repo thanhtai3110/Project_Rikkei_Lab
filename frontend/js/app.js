@@ -641,7 +641,7 @@ function candidate(loginMessage) {
             authMode('login');
             authFeedback(loginMessage, false);
         }
-        if (!$('#authDialog').open) $('#authDialog').showModal();
+        $('#authDialog').showModal();
         return false;
     }
     if (state.user.role !== 'Candidate') {
@@ -653,7 +653,7 @@ function candidate(loginMessage) {
 let toastTimer;
 // Thông báo xuất hiện ngay tại hộp thoại đang thao tác; nếu không có dialog thì hiển thị trên trang.
 function toast(message, kind) {
-    const success = kind === 'success' || (!kind && /^(Đã |Đăng (ký|nhập) thành công|Lưu |Cập nhật |Tạo |Gửi )/i.test(message));
+    const success = kind === 'success';
     const activeDialog = [...document.querySelectorAll('dialog[open]')].at(-1);
     const globalToast = $('#toast');
     clearTimeout(toastTimer);
@@ -732,51 +732,30 @@ function render() {
     if (page === 'applications') renderApplications();
     if (page === 'cv') renderCV()
 }
-const companyLogos = {
-  "TechNova Studio": "images/companies/f133adae63.svg",
-  "Pixel & Co.": "images/companies/c0f2da66a6.svg",
-  "Green Growth": "images/companies/72d8b149ad.svg",
-  "CloudBase": "images/companies/cd3888f8ca.svg",
-  "Monday Creative": "images/companies/12e1160ce5.svg",
-  "AppNova": "images/companies/95915416dd.svg",
-  "BluePeak Software": "images/companies/95d1d0a748.svg",
-  "BrightWave Media": "images/companies/e8cacec689.svg",
-  "BuildCore": "images/companies/9551225b5c.svg",
-  "CarePlus Clinic": "images/companies/2ca25f9b26.svg",
-  "CargoLink": "images/companies/bfb2db6c16.svg",
-  "CloudOrbit": "images/companies/e640b17e1d.svg",
-  "ColorNest Studio": "images/companies/d248c69d81.svg",
-  "DataBridge Lab": "images/companies/f2483f4d02.svg",
-  "EduSpring": "images/companies/9df2c58e53.svg",
-  "FinVista": "images/companies/2ba0060d8a.svg",
-  "GreenOffice": "images/companies/a6b608f2f6.svg",
-  "HomeCraft": "images/companies/8139dfd38d.svg",
-  "LegalPath": "images/companies/b989fddf92.svg",
-  "MarketSquare": "images/companies/0f9cd8ab35.svg",
-  "MechaPro": "images/companies/a4d5a3b0f7.svg",
-  "Minh An Finance": "images/companies/402b516a96.svg",
-  "Northstar Digital": "images/companies/62a82c80d8.svg",
-  "OceanBiz": "images/companies/a6ea7d6463.svg",
-  "PeopleFirst HR": "images/companies/2b109477ea.svg",
-  "PixelStack": "images/companies/74b51f3efc.svg",
-  "ProductWise": "images/companies/d4beca3562.svg",
-  "QualityWorks": "images/companies/2055e33ff3.svg",
-  "RetailOne": "images/companies/64eb88b271.svg",
-  "ShopGrowth": "images/companies/738ddd3782.svg",
-  "Skyline Hotel": "images/companies/8c39d975da.svg",
-  "StoryHouse": "images/companies/dfc0723319.svg",
-  "Sunrise Service": "images/companies/2605c9cf94.svg",
-  "TechCare": "images/companies/45d5f6b2c9.svg",
-  "TrustBank Demo": "images/companies/c1089981b6.svg",
-  "UXCraft": "images/companies/2b0be952cb.svg",
-  "VectorCloud": "images/companies/ac4025e2fd.svg"
-};
-const companyLogo = company => companyLogos[company] || "images/companies/default.svg";
+function renderCompanyLogo(job) {
+    const company = String(job.company || '').trim().normalize('NFC');
+    const words = company.replace(/(\p{Ll})(\p{Lu})/gu, '$1 $2').match(/[\p{L}\p{N}]+/gu) || [];
+    const initials = (words.length > 1
+        ? words.slice(0, 2).map(word => Array.from(word)[0]).join('')
+        : Array.from(words[0] || '?').slice(0, 2).join('')).toLocaleUpperCase('vi');
+    let hash = 0;
+    for (const char of company.toLocaleLowerCase('vi')) {
+        hash = (Math.imul(hash, 31) + char.codePointAt(0)) >>> 0;
+    }
+    const url = String(job.company_logo_url || '').trim();
+    const image = /^https?:\/\//i.test(url)
+        ? `<img class="company-logo-image" src="${esc(url)}" alt="" referrerpolicy="no-referrer">`
+        : '';
+    return `<div class="logo" aria-hidden="true" style="--company-hue:${hash % 360}"><span class="company-initial">${esc(initials)}</span>${image}</div>`;
+}
+$('#jobList').addEventListener('error', event => {
+    if (event.target.classList.contains('company-logo-image')) event.target.remove();
+}, true);
 function renderJobs() {
     const start = performance.now(), q = $('#keyword').value.trim().toLocaleLowerCase('vi');
     let list = jobs.filter(j => j.open && j.status !== 'pending' && j.status !== 'rejected' && (page !== 'saved' || account()?.saved.includes(j.id)) && [j.title, j.company, ...j.skills].join(' ').toLocaleLowerCase('vi').includes(q) && (!$('#location').value || j.location === $('#location').value) && (!$('#type').value || j.type === $('#type').value) && j.min >= Number($('#salary').value || 0));
     list.sort((a, b) => $('#sort').value === 'salary' ? b.max - a.max : b.date.localeCompare(a.date));
-    $('#jobList').innerHTML = list.map(j => `<article class="card"><div class="logo" aria-hidden="true"><span class="company-initial">${esc(String(j.company || "?").trim().charAt(0).toLocaleUpperCase("vi"))}</span></div><div class="card-body"><h3>${esc(j.title)}</h3><div class="company">${esc(j.company)} · ${j.location}</div><div class="tags"><span class="tag salary">${j.min}–${j.max} triệu</span><span class="tag">${j.type}</span>${j.skills.map(s => `<span class="tag">${s}</span>`).join('')}</div><div class="card-bottom"><small>${j.open ? 'Đang tuyển' : 'Đã đóng'} · ${j.date}</small><button data-detail="${j.id}">Xem chi tiết →</button></div></div><button class="save" data-save="${j.id}" aria-label="${account()?.saved.includes(j.id) ? 'Bỏ lưu' : 'Lưu'} ${esc(j.title)}" aria-pressed="${!!account()?.saved.includes(j.id)}">${account()?.saved.includes(j.id) ? '♥' : '♡'}</button></article>`).join('') || empty('Chưa có việc làm phù hợp với bộ lọc.');
+    $('#jobList').innerHTML = list.map(j => `<article class="card">${renderCompanyLogo(j)}<div class="card-body"><h3>${esc(j.title)}</h3><div class="company">${esc(j.company)} · ${j.location}</div><div class="tags"><span class="tag salary">${j.min}–${j.max} triệu</span><span class="tag">${j.type}</span>${j.skills.map(s => `<span class="tag">${s}</span>`).join('')}</div><div class="card-bottom"><small>${j.open ? 'Đang tuyển' : 'Đã đóng'} · ${j.date}</small><button data-detail="${j.id}">Xem chi tiết →</button></div></div><button class="save" data-save="${j.id}" aria-label="${account()?.saved.includes(j.id) ? 'Bỏ lưu' : 'Lưu'} ${esc(j.title)}" aria-pressed="${!!account()?.saved.includes(j.id)}">${account()?.saved.includes(j.id) ? '♥' : '♡'}</button></article>`).join('') || empty('Chưa có việc làm phù hợp với bộ lọc.');
     $('#resultCount').textContent = `${list.length} công việc · Lọc cục bộ ${Math.ceil(performance.now() - start)} ms`
 }
 async function toggleSave(id) {
@@ -791,7 +770,7 @@ function details(id) {
     const j = jobs.find(j => j.id === id);
     if (!j) return;
     const applied = account()?.applications.some(a => a.jobId === id);
-    $('#detailBody').innerHTML = `<span class="eyebrow">${esc(j.company)}</span><h2>${esc(j.title)}</h2><p>${j.location} · ${j.type} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>Tham gia xây dựng và phát triển sản phẩm, phối hợp với các thành viên trong nhóm để mang lại trải nghiệm tốt cho khách hàng.</p><h3>Yêu cầu</h3><p>Nắm vững ${j.skills.join(', ')}. Chủ động học hỏi, có tinh thần trách nhiệm và khả năng làm việc nhóm.</p><h3>Quyền lợi</h3><p>Môi trường cởi mở, cơ hội phát triển và thu nhập theo năng lực.</p><button class="primary" data-apply="${id}" ${!j.open || applied ? 'disabled' : ''}>${applied ? 'Bạn đã ứng tuyển' : j.open ? 'Ứng tuyển ngay' : 'Tin đã đóng'}</button>`;
+    $('#detailBody').innerHTML = `<span class="eyebrow">${esc(j.company)}</span><h2>${esc(j.title)}</h2><p>${j.location} · ${j.type} · ${j.min}–${j.max} triệu/tháng</p><h3>Mô tả công việc</h3><p>Tham gia xây dựng và phát triển sản phẩm, phối hợp với các thành viên trong nhóm để mang lại trải nghiệm tốt cho khách hàng.</p><h3>Yêu cầu</h3><p>Nắm vững ${j.skills.join(', ')}. Chủ động học hỏi, có tinh thần trách nhiệm và khả năng làm việc nhóm.</p><h3>Quyền lợi</h3><p>Môi trường cởi mở, cơ hội phát triển và thu nhập theo năng lực.</p><p class="muted">Tin tuyển dụng và nội dung mô tả là dữ liệu mẫu.</p><button class="primary" data-apply="${id}" ${!j.open || applied ? 'disabled' : ''}>${applied ? 'Bạn đã ứng tuyển' : j.open ? 'Ứng tuyển ngay' : 'Tin đã đóng'}</button>`;
     $('#detailDialog').showModal()
 }
 const applyLoginMessage = 'Bạn cần đăng nhập để ứng tuyển.';
@@ -825,7 +804,12 @@ async function withdraw(id) {
   if(!candidate())return;
   const a=account()?.applications?.find(a=>a.jobId===id);
   if(!a||!a.id)return toast('Không tìm được đơn ứng tuyển này.');
-  if(!confirm('Bạn muốn rút đơn? Bạn sẽ không thể ứng tuyển lại tin này.'))return;
+  if (!await jobConfirm({
+    title: 'Rút đơn ứng tuyển',
+    message: 'Sau khi rút đơn, bạn sẽ không thể ứng tuyển lại vào tin tuyển dụng này.',
+    action: 'Rút đơn',
+    danger: true
+  })) return;
   try{
     await JobAPI.request('/api/applications/'+a.id+'/withdraw',{method:'PATCH'});
     await JobAPI.refresh();render();toast('Rút đơn thành công.','success');
@@ -945,15 +929,15 @@ function validateAuthField(field) {
   if (!value) return 'Vui lòng nhập vào ô này.';
   if (field.validity.typeMismatch) return 'Vui lòng nhập email hợp lệ.';
   if (field.id === 'name' && value.length < 2) return 'Họ tên phải có ít nhất 2 ký tự.';
-  if (field.minLength === 8 && value.length !== 8) return 'Mật khẩu phải đúng 8 ký tự.';
+  if (field.minLength === 8 && value.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự.';
   if (field.id === 'confirmPassword' && value !== $('#password').value) return 'Xác nhận mật khẩu không khớp.';
   return '';
 }
 
 authForm.addEventListener('input', e => {
-  if (e.target.hasAttribute('aria-invalid')) authFieldError(e.target, validateAuthField(e.target));
+  if (e.target.hasAttribute('aria-invalid') || ($('#authMode').value === 'register' && ['password','confirmPassword'].includes(e.target.id))) authFieldError(e.target, validateAuthField(e.target));
   const confirmation = $('#confirmPassword');
-  if (e.target.id === 'password' && confirmation.hasAttribute('aria-invalid')) {
+  if (e.target.id === 'password' && (confirmation.value || confirmation.hasAttribute('aria-invalid'))) {
     authFieldError(confirmation, validateAuthField(confirmation));
   }
 });
@@ -973,13 +957,13 @@ function authMode(mode='login') {
   $('#authSubtitle').textContent = mode === 'register' ? 'Tạo tài khoản để bắt đầu hành trình nghề nghiệp.' : 'Đăng nhập để quản lý hồ sơ và việc làm của bạn.';
   $('#authRoleNotice').hidden = mode !== 'register';
   $('#password').autocomplete = mode === 'register' ? 'new-password' : 'current-password';
-  // Chỉ giới hạn đúng 8 ký tự khi ĐĂNG KÝ; đăng nhập vẫn chấp nhận mật khẩu của tài khoản cũ.
+  // Đăng ký yêu cầu tối thiểu 8 ký tự; đăng nhập vẫn nhận mật khẩu tài khoản cũ.
   for (const id of ['password', 'confirmPassword']) {
     const field = document.getElementById(id);
     if (mode === 'register') {
       field.minLength = 8;
-      field.maxLength = 8;
-      field.placeholder = 'Đúng 8 ký tự';
+      field.removeAttribute('maxlength');
+      field.placeholder = 'Ít nhất 8 ký tự';
     } else {
       field.removeAttribute('minlength');
       field.removeAttribute('maxlength');
@@ -1013,8 +997,8 @@ authForm.addEventListener('submit', async e => {
       return;
     }
     const data=await JobAPI.request('/auth/login',{method:'POST',body:{email,password},auth:false});
+    JobAPI.clearToken();
     localStorage.setItem('jobconnect_jwt',data.access_token);
-    sessionStorage.removeItem('jobconnect_jwt');
     await JobAPI.refresh();
     authDialog.close();$('#authForm').reset();
     render();
@@ -1036,10 +1020,15 @@ $('#userProfile').onclick = () => {
     else location.hash = destination;
 };
 $('#logoutButton').onclick = async () => {
-  localStorage.removeItem('jobconnect_jwt');sessionStorage.removeItem('jobconnect_jwt');state.user=null;state.accounts=[];page='jobs';cvs=[];
-  await JobAPI.refresh();render();
+  JobAPI.clearToken();
+  state.user=null;state.accounts=[];page='jobs';cvs=[];
+  JobAPI.recruiterApps=[];JobAPI.adminUsers=[];
+  jobs.splice(0,jobs.length);
+  render();
   if(typeof routeTo==='function')routeTo('#/jobs');else location.hash='#/jobs';
   toast('Đã đăng xuất thành công.','success');
+  try{await JobAPI.refresh();}
+  catch(error){if(!JobAPI.getToken())toast(error.message);}
 };
 document.addEventListener('click', e => {
   const button=e.target.closest('[data-toggle-password]');
@@ -1155,7 +1144,7 @@ document.getElementById('moreCategories')?.addEventListener('click', () => {
       const password=document.getElementById('resetPassword').value;
       const confirm=document.getElementById('resetConfirm').value;
       if(!/^\d{6}$/.test(otp))return notify('Mã xác minh phải đủ 6 chữ số.');
-      if(password.length!==8)return notify('Mật khẩu mới phải đúng 8 ký tự.');
+      if(password.length<8)return notify('Mật khẩu mới phải có ít nhất 8 ký tự.');
       if(confirm!==password)return notify('Hai mật khẩu chưa trùng khớp.');
       await JobAPI.request('/auth/reset-password',{method:'POST',auth:false,body:{email:email.value.trim().toLowerCase(),code:otp,new_password:password}});
       showLogin();document.getElementById('email').value=email.value;document.getElementById('password').value='';
