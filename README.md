@@ -1,4 +1,3 @@
-
 # 💼 JobConnect – Hướng dẫn cài đặt và kiểm thử
 
 Hướng dẫn dành cho giảng viên, thành viên nhóm và người kiểm thử muốn chạy dự án **JobConnect** từ mã nguồn trên GitHub.
@@ -17,6 +16,7 @@ Hướng dẫn dành cho giảng viên, thành viên nhóm và người kiểm t
 | Backend | Python FastAPI |
 | Database | MySQL |
 | Xác thực | JWT |
+| Gửi email | Gmail SMTP |
 | Môi trường | Windows, VS Code, PowerShell |
 
 ### Địa chỉ truy cập
@@ -27,7 +27,7 @@ Hướng dẫn dành cho giảng viên, thành viên nhóm và người kiểm t
 | Swagger API | http://127.0.0.1:8000/docs |
 | Kiểm tra máy chủ | http://127.0.0.1:8000/health |
 
-> **Lưu ý:** FastAPI chạy cả giao diện và API trên cổng 8000. Không cần PHP, Live Server hoặc file `.bat`. MySQL Server phải được bật trước khi chạy dự án.
+> FastAPI chạy cả giao diện và API trên cổng 8000. Không cần PHP, XAMPP, Live Server hoặc file `.bat`. MySQL Server phải được bật trước khi chạy dự án.
 
 ---
 
@@ -37,6 +37,7 @@ Trước khi chạy dự án, cần cài đặt:
 
 - Python 3
 - MySQL Server
+- MySQL Workbench
 - Visual Studio Code
 - Trình duyệt Chrome hoặc Microsoft Edge
 
@@ -53,9 +54,10 @@ Nếu hiển thị phiên bản Python thì tiếp tục.
 ### Cấu trúc thư mục dự án
 
 ```text
-JobConnect/
+Project_Rikkei_Lab/
 │
 ├── README.md
+├── .gitignore
 │
 ├── frontend/
 │   ├── index.html
@@ -106,8 +108,11 @@ JobConnect/
     │
     ├── requirements.txt
     ├── .env.example
-    └── .gitignore
+    ├── .env
+    └── .venv/
 ```
+
+> File `.env` và thư mục `.venv` được tạo trên máy người kiểm thử, không cần tải từ GitHub.
 
 **Quan trọng:** Tất cả lệnh PowerShell dưới đây được chạy tại thư mục `Backend`, không chạy trong `app/` hoặc `scripts/`.
 
@@ -117,7 +122,9 @@ JobConnect/
 
 ### Bước 1: Mở dự án
 
-Mở thư mục `JobConnect` bằng VS Code.
+Tải mã nguồn từ GitHub và giải nén nếu tải bằng file ZIP.
+
+Mở thư mục dự án bằng Visual Studio Code.
 
 Chọn **Terminal → New Terminal**.
 
@@ -129,10 +136,22 @@ cd Backend
 
 Nếu Terminal đã ở thư mục `Backend` thì bỏ qua bước này.
 
+Kiểm tra thư mục hiện tại:
+
+```powershell
+Get-Location
+```
+
 ### Bước 2: Tạo môi trường Python
 
 ```powershell
 py -m venv .venv
+```
+
+Nếu máy không nhận lệnh `py`, thử:
+
+```powershell
+python -m venv .venv
 ```
 
 ### Bước 3: Cài đặt thư viện
@@ -143,7 +162,7 @@ py -m venv .venv
 
 Chờ quá trình cài đặt hoàn tất.
 
-> Chỉ cần tạo môi trường và cài thư viện lần đầu hoặc khi có thay đổi thư viện.
+> Không bắt buộc kích hoạt môi trường ảo bằng `Activate.ps1`. Các lệnh trong hướng dẫn sử dụng trực tiếp Python trong thư mục `.venv`, giúp tránh lỗi Execution Policy của PowerShell.
 
 ---
 
@@ -153,55 +172,104 @@ Chờ quá trình cài đặt hoàn tất.
 
 Bật dịch vụ **MySQL Server**.
 
-Mở MySQL Workbench hoặc MySQL Command Line Client.
+Mở MySQL Workbench và đăng nhập bằng tài khoản MySQL trên máy.
+
+Thông tin kết nối thường sử dụng:
+
+| Thông tin | Giá trị |
+|---|---|
+| Host | localhost hoặc 127.0.0.1 |
+| Port | 3306 |
+| Username | root |
+| Password | Mật khẩu MySQL đã cài đặt |
 
 ### Bước 2: Tạo cơ sở dữ liệu
 
-Chạy lệnh SQL:
+Chạy lệnh SQL trong MySQL Workbench:
 
 ```sql
-CREATE DATABASE IF NOT EXISTS job_portal;
+CREATE DATABASE IF NOT EXISTS job_portal
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 ```
 
-> Lệnh SQL phải được chạy trong MySQL, không nhập trực tiếp vào PowerShell.
+> Lệnh SQL phải được chạy trong MySQL Workbench hoặc MySQL Command Line Client, không nhập trực tiếp vào PowerShell.
 
 ### Bước 3: Tạo file `.env`
 
 Trong Terminal tại thư mục `Backend`, chạy:
 
 ```powershell
-Copy-Item .env.example .env
+if (-not (Test-Path -LiteralPath .env)) {
+    Copy-Item .env.example .env
+}
 ```
 
-**Chỉ thực hiện khi chưa có file `.env`.**
+Lệnh trên chỉ tạo file `.env` khi file chưa tồn tại, tránh ghi đè cấu hình đã thiết lập.
 
-Nếu đã có `.env` đang hoạt động, hãy giữ nguyên để tránh mất cấu hình MySQL hoặc Gmail SMTP.
+### Bước 4: Mở đúng file `.env`
 
-### Bước 4: Cấu hình kết nối MySQL
+Chạy lệnh:
 
-Mở file `Backend/.env`.
+```powershell
+notepad .env
+```
 
-Ví dụ MySQL có mật khẩu:
+File cấu hình sẽ được mở bằng Notepad.
+
+Nội dung mặc định:
 
 ```dotenv
 DATABASE_URL=mysql+pymysql://root:MAT_KHAU_MYSQL@127.0.0.1:3306/job_portal
 JOB_SECRET_KEY=THAY_BANG_CHUOI_BI_MAT_NGAU_NHIEN_DAI
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=yourmail@gmail.com
+SMTP_PASSWORD=GOOGLE_APP_PASSWORD
+SMTP_FROM=yourmail@gmail.com
 ```
 
-Thay `MAT_KHAU_MYSQL` bằng mật khẩu MySQL thực tế.
+Thay `MAT_KHAU_MYSQL` bằng mật khẩu MySQL thực tế trên máy.
 
-Nếu tài khoản `root` không có mật khẩu:
+Ví dụ nếu mật khẩu MySQL là `123456`:
 
 ```dotenv
-DATABASE_URL=mysql+pymysql://root@127.0.0.1:3306/job_portal
+DATABASE_URL=mysql+pymysql://root:123456@127.0.0.1:3306/job_portal
 ```
 
-**Lưu ý:**
+Nếu tài khoản MySQL không có mật khẩu:
 
-- Nếu mật khẩu có ký tự đặc biệt như `@`, `#`, `%`, cần mã hóa phù hợp để sử dụng trong URL.
-- Không nhập nội dung file `.env` vào Terminal.
-- Không đưa file `.env` chứa mật khẩu lên GitHub.
-- Giữ nguyên cấu hình SMTP nếu đã thiết lập.
+```dotenv
+DATABASE_URL=mysql+pymysql://root:@127.0.0.1:3306/job_portal
+```
+
+Có thể tạo khóa JWT ngẫu nhiên bằng lệnh:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Sao chép chuỗi được tạo vào giá trị `JOB_SECRET_KEY` trong file `.env`.
+
+Sau khi chỉnh sửa, nhấn `Ctrl + S` để lưu và đóng Notepad.
+
+### Phân biệt file `.env` và `.env.example`
+
+| File | Chức năng |
+|---|---|
+| `.env.example` | File cấu hình mẫu dành cho người tải dự án |
+| `.env` | File cấu hình thực tế mà Backend sử dụng |
+
+**Quan trọng:**
+
+- Chỉ chỉnh sửa mật khẩu MySQL trong file `.env`.
+- Không chỉnh sửa nhầm file `.env.example`.
+- Hai file này không tự động đồng bộ nội dung.
+- Không giữ nguyên chữ `MAT_KHAU_MYSQL`.
+- Không sao chép lại file mẫu nếu đã cấu hình `.env`.
+- Không đưa file `.env` chứa mật khẩu thật lên GitHub.
+- Nếu mật khẩu chứa ký tự đặc biệt như `@`, `#`, `%`, cần mã hóa URL trước khi đưa vào `DATABASE_URL`.
+- SMTP chưa cần cấu hình nếu không kiểm thử chức năng quên mật khẩu.
 
 ### Bước 5: Kiểm tra kết nối MySQL
 
@@ -217,13 +285,15 @@ Nếu hiển thị:
 KET NOI MYSQL THANH CONG
 ```
 
-Nghĩa là Backend đã kết nối được với MySQL.
+Nghĩa là Backend đã kết nối thành công với MySQL.
+
+Nếu xuất hiện lỗi, thực hiện hướng dẫn xử lý tại mục 13 trước khi tiếp tục.
 
 ---
 
 ## 5. Tạo bảng và dữ liệu kiểm thử
 
-> **Quan trọng:** Nên sử dụng database riêng để kiểm thử. Nếu database đã có bảng và dữ liệu thì không cần nạp lại dữ liệu demo.
+> Nên sử dụng database riêng để kiểm thử. Không sử dụng database chứa dữ liệu quan trọng.
 
 ### Bước 1: Tạo bảng dữ liệu
 
@@ -239,7 +309,7 @@ Lệnh tạo các bảng chưa tồn tại theo cấu trúc models.
 .\.venv\Scripts\python.exe -m scripts.setup_password_reset
 ```
 
-Lệnh tạo bảng phục vụ chức năng quên mật khẩu nếu chưa tồn tại.
+Lệnh kiểm tra và tạo bảng phục vụ chức năng quên mật khẩu nếu chưa tồn tại.
 
 ### Bước 3: Nạp dữ liệu mẫu
 
@@ -249,19 +319,33 @@ Lệnh tạo bảng phục vụ chức năng quên mật khẩu nếu chưa tồ
 
 Dữ liệu mẫu gồm tài khoản Admin, Recruiter và các tin tuyển dụng minh họa.
 
-> Không chạy tùy tiện script nạp dữ liệu trên database chứa dữ liệu quan trọng.
+**Lưu ý:**
+
+- Script không tự động xóa dữ liệu hiện có.
+- Tin tuyển dụng mẫu được nạp khi bảng `jobs` đang trống.
+- Tài khoản demo đã tồn tại sẽ không được tự động đổi mật khẩu.
+- `init_db` không tự động cập nhật cấu trúc cột của các bảng cũ.
 
 ---
 
 ## 6. Khởi động website
 
-Trong Terminal đang ở thư mục `Backend`, chạy:
+### Cách 1: Chạy bằng cổng 8000 (mặc định)
+
+Trong Terminal tại thư mục `Backend`, chạy:
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Sau khi máy chủ chạy, mở trình duyệt:
+Kết quả dự kiến:
+
+```text
+INFO: Uvicorn running on http://127.0.0.1:8000
+INFO: Application startup complete.
+```
+
+Sau đó mở trình duyệt:
 
 **Website:** http://127.0.0.1:8000
 
@@ -269,12 +353,58 @@ Sau khi máy chủ chạy, mở trình duyệt:
 
 **Kiểm tra Backend:** http://127.0.0.1:8000/health
 
+### Cách 2: Chạy bằng cổng 8001 (dự phòng)
+
+Nếu cổng 8000 đang được sử dụng hoặc xuất hiện lỗi:
+
+```text
+[WinError 10013]
+```
+
+Hoặc:
+
+```text
+[WinError 10048]
+```
+
+Chạy lệnh:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8001
+```
+
+Sau đó truy cập:
+
+**Website:** http://127.0.0.1:8001
+
+**Swagger API:** http://127.0.0.1:8001/docs
+
+**Kiểm tra Backend:** http://127.0.0.1:8001/health
+
+> Không cần chỉnh sửa mã nguồn Frontend khi truy cập website trực tiếp qua FastAPI trên cổng 8001. Không sử dụng Live Server trong trường hợp này.
+
+### Kiểm tra máy chủ
+
 Nếu `/health` hoạt động, kết quả dự kiến:
 
 ```json
 {
   "ok": true
 }
+```
+
+Lưu ý `/health` chỉ xác nhận máy chủ API đang hoạt động.
+
+Để kiểm tra API đọc dữ liệu MySQL, truy cập:
+
+```text
+http://127.0.0.1:8000/api/jobs
+```
+
+Nếu sử dụng cổng 8001:
+
+```text
+http://127.0.0.1:8001/api/jobs
 ```
 
 **Lưu ý:** Giữ Terminal đang chạy khi sử dụng website.
@@ -293,9 +423,9 @@ Sau khi chạy `scripts.seed_demo` trên database mới:
 | Recruiter | recruiter@demo.vn | 123456 |
 | Candidate | Tự đăng ký | Tự đặt |
 
-> Mật khẩu `123456` chỉ áp dụng cho tài khoản demo được tạo mới. Nếu tài khoản đã tồn tại, script có thể giữ nguyên mật khẩu cũ.
+> Mật khẩu `123456` là mật khẩu tài khoản demo, không phải mật khẩu MySQL bắt buộc.
 
-> Tài khoản đăng ký mới yêu cầu mật khẩu đúng **8 ký tự** theo phiên bản hiện tại.
+> Tài khoản đăng ký mới nên sử dụng mật khẩu 8 ký tự để tương thích với giao diện kiểm thử hiện tại.
 
 ---
 
@@ -306,7 +436,7 @@ Sau khi chạy `scripts.seed_demo` trên database mới:
 1. Truy cập website.
 2. Nhấn **Đăng ký**.
 3. Nhập họ tên và email.
-4. Nhập mật khẩu đúng 8 ký tự.
+4. Nhập mật khẩu 8 ký tự.
 5. Nhập lại mật khẩu xác nhận.
 6. Nhấn đăng ký.
 
@@ -353,18 +483,24 @@ Sau khi chạy `scripts.seed_demo` trên database mới:
 
 ### 8.5. Ứng tuyển
 
-1. Chọn một tin tuyển dụng.
-2. Nhấn **Ứng tuyển**.
-3. Nếu chưa đăng nhập, hệ thống yêu cầu đăng nhập.
-4. Đăng nhập bằng tài khoản Candidate.
-5. Thực hiện ứng tuyển.
-6. Kiểm tra lịch sử ứng tuyển.
+1. Đăng nhập bằng tài khoản Candidate.
+2. Mở mục **Hồ sơ & CV**.
+3. Tải lên một file CV định dạng PDF.
+4. Chọn một tin tuyển dụng đang mở.
+5. Nhấn **Ứng tuyển**.
+6. Chọn CV đã tải lên.
+7. Gửi đơn ứng tuyển.
+8. Kiểm tra mục **Đơn ứng tuyển**.
 
 **Kết quả mong đợi:**
 
 - Người chưa đăng nhập phải đăng nhập trước khi ứng tuyển.
-- Đơn ứng tuyển hợp lệ được lưu.
+- Đơn ứng tuyển hợp lệ được lưu vào MySQL.
+- CV PDF được gửi kèm đơn ứng tuyển.
 - Đơn xuất hiện trong lịch sử ứng tuyển.
+- Không thể ứng tuyển trùng một tin tuyển dụng.
+
+> CV phải có định dạng PDF hợp lệ và dung lượng không vượt quá 5 MB.
 
 ### 8.6. Hồ sơ và CV
 
@@ -375,7 +511,7 @@ Kiểm tra:
 - Danh sách đơn ứng tuyển.
 - Trạng thái các đơn ứng tuyển.
 
-> Một số chức năng liên quan đến file CV có thể còn xử lý trên trình duyệt, không phải toàn bộ dữ liệu đã được lưu trong MySQL.
+> CV được quản lý trên trình duyệt trước khi ứng tuyển. Khi gửi đơn ứng tuyển thành công, bản CV đính kèm được lưu trên Backend vào MySQL.
 
 ---
 
@@ -397,15 +533,18 @@ Mật khẩu: 123456
 | 3 | Đăng tin tuyển dụng | Tạo tin mới |
 | 4 | Chỉnh sửa tin | Cập nhật nội dung |
 | 5 | Quản lý ứng viên | Xem đơn ứng tuyển |
-| 6 | Cập nhật đơn | Thay đổi trạng thái phù hợp |
+| 6 | Xem CV | Mở CV PDF của ứng viên |
+| 7 | Cập nhật đơn | Thay đổi trạng thái phù hợp |
+| 8 | Đóng tin tuyển dụng | Ngừng nhận ứng tuyển |
 
 ### Kiểm thử đăng tin tuyển dụng
 
 1. Đăng nhập Recruiter.
 2. Mở mục **Nhà tuyển dụng**.
-3. Chọn **Quản lý tin tuyển dụng**.
-4. Nhập thông tin công việc.
-5. Nhấn lưu tin.
+3. Chọn **Hồ sơ doanh nghiệp** và kiểm tra tên công ty.
+4. Chọn **Quản lý tin tuyển dụng**.
+5. Nhập thông tin công việc.
+6. Nhấn lưu tin.
 
 **Kết quả mong đợi:**
 
@@ -423,7 +562,22 @@ Mật khẩu: 123456
 **Kết quả mong đợi:**
 
 - Nội dung tin được cập nhật.
-- Chỉ Recruiter có quyền sở hữu được chỉnh sửa tin tương ứng.
+- Tin được chuyển về trạng thái chờ duyệt.
+- Chỉ Recruiter có quyền sở hữu được chỉnh sửa tin.
+
+### Kiểm thử quản lý ứng viên
+
+1. Đăng nhập Recruiter.
+2. Mở mục **Quản lý ứng viên**.
+3. Chọn đơn ứng tuyển.
+4. Nhấn **Xem CV** nếu có CV đính kèm.
+5. Thay đổi trạng thái đơn ứng tuyển.
+
+**Kết quả mong đợi:**
+
+- Hiển thị thông tin ứng viên.
+- Có thể xem CV PDF.
+- Trạng thái ứng tuyển được cập nhật.
 
 ---
 
@@ -440,9 +594,8 @@ Mật khẩu: 123456
 
 1. Đăng nhập Admin.
 2. Mở mục **Quản trị**.
-3. Xem danh sách tin tuyển dụng.
-4. Kiểm tra tin chờ duyệt.
-5. Thử duyệt hoặc từ chối tin.
+3. Xem danh sách tin tuyển dụng chờ duyệt.
+4. Thử duyệt hoặc từ chối tin.
 
 **Kết quả mong đợi:**
 
@@ -521,6 +674,8 @@ Mật khẩu: 123456
 
 Chức năng quên mật khẩu sử dụng mã xác minh gửi qua Gmail SMTP.
 
+> Chỉ cần cấu hình SMTP khi muốn kiểm thử chức năng quên mật khẩu. Các chức năng đăng nhập, đăng ký và tuyển dụng không yêu cầu cấu hình Gmail.
+
 ### 11.1. Cấu hình Gmail SMTP
 
 **Bước 1:** Bật xác minh 2 bước:
@@ -531,7 +686,15 @@ https://myaccount.google.com/signinoptions/two-step-verification
 
 https://myaccount.google.com/apppasswords
 
-**Bước 3:** Mở `Backend/.env` và thêm:
+Mật khẩu ứng dụng cần được tạo từ tài khoản Gmail dùng để gửi email.
+
+**Bước 3:** Mở file `.env`:
+
+```powershell
+notepad .env
+```
+
+Tìm và chỉnh sửa các dòng SMTP:
 
 ```dotenv
 SMTP_HOST=smtp.gmail.com
@@ -541,9 +704,21 @@ SMTP_PASSWORD=MAT_KHAU_UNG_DUNG_16_KY_TU
 SMTP_FROM=yourmail@gmail.com
 ```
 
-Thay email và mật khẩu ứng dụng bằng thông tin Gmail của bạn.
+Thay email và mật khẩu ứng dụng bằng thông tin Gmail thực tế.
 
-> Dùng mật khẩu ứng dụng Google, không dùng mật khẩu Gmail thông thường. Không công khai file `.env`.
+| Cấu hình | Ý nghĩa |
+|---|---|
+| SMTP_HOST | Máy chủ gửi email Gmail |
+| SMTP_PORT | Cổng gửi email |
+| SMTP_USER | Tài khoản Gmail gửi email |
+| SMTP_PASSWORD | Mật khẩu ứng dụng Google |
+| SMTP_FROM | Địa chỉ người gửi |
+
+Nên đặt `SMTP_FROM` giống `SMTP_USER`.
+
+Sau khi lưu file `.env`, dừng Backend bằng `Ctrl + C` và khởi động lại.
+
+> Không sử dụng mật khẩu Gmail thông thường. Không công khai mật khẩu ứng dụng hoặc file `.env`.
 
 ### 11.2. Các bước kiểm thử
 
@@ -551,15 +726,16 @@ Thay email và mật khẩu ứng dụng bằng thông tin Gmail của bạn.
 2. Chọn **Quên mật khẩu**.
 3. Nhập email đã đăng ký.
 4. Yêu cầu gửi mã xác minh.
-5. Kiểm tra Gmail.
+5. Kiểm tra Gmail và thư mục Spam.
 6. Nhập mã xác minh nhận được.
-7. Nhập mật khẩu mới đúng 8 ký tự.
+7. Nhập mật khẩu mới 8 ký tự trở lên.
 8. Xác nhận thay đổi.
 9. Đăng nhập lại bằng mật khẩu mới.
 
 **Kết quả mong đợi:**
 
-- Mã được gửi khi SMTP hoạt động.
+- Mã xác minh gồm 6 chữ số.
+- Mã có hiệu lực trong 10 phút.
 - Mã sai hoặc hết hạn bị từ chối.
 - Mật khẩu mới được cập nhật sau khi xác minh hợp lệ.
 - Có thể đăng nhập bằng mật khẩu mới.
@@ -572,6 +748,10 @@ Truy cập:
 
 http://127.0.0.1:8000/docs
 
+Nếu sử dụng cổng dự phòng:
+
+http://127.0.0.1:8001/docs
+
 ### Các API thường sử dụng
 
 | Phương thức | Đường dẫn | Chức năng |
@@ -581,11 +761,44 @@ http://127.0.0.1:8000/docs
 | POST | `/auth/login` | Đăng nhập |
 | GET | `/auth/me` | Thông tin tài khoản |
 | GET | `/api/jobs` | Danh sách việc làm |
+| GET | `/api/saved` | Danh sách việc đã lưu |
+| POST | `/api/applications` | Nộp đơn ứng tuyển |
+| GET | `/api/applications/my` | Lịch sử ứng tuyển |
+| GET | `/api/jobs/mine` | Tin của Recruiter |
 | GET | `/api/admin/users` | Danh sách tài khoản |
 | PATCH | `/api/admin/users/{user_id}/status` | Khóa/mở khóa |
 | DELETE | `/api/admin/users/{user_id}` | Xóa tài khoản |
 | POST | `/auth/forgot-password` | Gửi mã khôi phục |
 | POST | `/auth/reset-password` | Đặt lại mật khẩu |
+
+### Ví dụ đăng nhập Admin
+
+**Phương thức:** `POST`
+
+**Đường dẫn:**
+
+```text
+/auth/login
+```
+
+**JSON Body:**
+
+```json
+{
+  "email": "admin@demo.vn",
+  "password": "123456"
+}
+```
+
+Kết quả đăng nhập thành công sẽ trả về `access_token`.
+
+Các API yêu cầu xác thực cần gửi Header:
+
+```text
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Có thể sử dụng Postman hoặc công cụ gửi HTTP Request để kiểm thử các API yêu cầu token.
 
 ### Ví dụ khóa tài khoản
 
@@ -615,8 +828,6 @@ http://127.0.0.1:8000/docs
 
 > ID `3` là ví dụ. Cần thay bằng ID tài khoản thử nghiệm thực tế.
 
-Các API yêu cầu đăng nhập phải được gọi kèm JWT Bearer token hợp lệ.
-
 ---
 
 ## 13. Các lỗi thường gặp
@@ -626,34 +837,196 @@ Các API yêu cầu đăng nhập phải được gọi kèm JWT Bearer token h�
 | 401 | Chưa đăng nhập hoặc token hết hạn | Đăng nhập lại |
 | 403 | Không có quyền hoặc tài khoản bị khóa | Kiểm tra vai trò |
 | 404 | Sai URL hoặc không tìm thấy dữ liệu | Kiểm tra đường dẫn |
-| 405 | Sai phương thức HTTP | Kiểm tra GET, POST, PATCH, DELETE |
-| 422 | Dữ liệu gửi không hợp lệ | Kiểm tra JSON |
+| 405 | Sai phương thức HTTP | Kiểm tra phương thức API |
+| 422 | Dữ liệu gửi không hợp lệ | Kiểm tra dữ liệu đầu vào |
 | 500 | Backend hoặc MySQL gặp lỗi | Xem Terminal |
-| Access denied | Sai mật khẩu MySQL | Kiểm tra `.env` |
-| Unknown database | Database chưa tồn tại | Tạo `job_portal` |
-| Connection refused | Dịch vụ chưa chạy | Bật MySQL hoặc FastAPI |
-| No module named | Sai đường dẫn import hoặc thiếu thư viện | Kiểm tra cấu trúc và dependencies |
+| 503 | SMTP chưa cấu hình hoặc gửi email lỗi | Kiểm tra SMTP |
+| MySQL 1045 | Thông tin đăng nhập không hợp lệ | Kiểm tra `.env` |
+| MySQL 1049 | Database chưa tồn tại | Tạo `job_portal` |
+| MySQL 2003 | Không kết nối được máy chủ | Bật MySQL |
+| MAT_KHAU_MYSQL | Chưa thay mật khẩu mẫu | Sửa `.env` |
+| WinError 10013 | Windows từ chối sử dụng cổng | Thử cổng 8001 |
+| WinError 10048 | Cổng đang được sử dụng | Đổi cổng hoặc dừng tiến trình cũ |
+| No module named | Thiếu thư viện hoặc sai đường dẫn | Cài thư viện và kiểm tra thư mục |
 
-### Lỗi không kết nối được MySQL
+### 13.1. Lỗi MySQL 1045 – Access denied
 
-Kiểm tra:
+Ví dụ:
 
-1. MySQL Server đã bật chưa.
-2. Database có tên `job_portal` không.
-3. Tài khoản và mật khẩu trong `.env` có đúng không.
-4. MySQL có đang chạy trên cổng `3306` không.
+```text
+Access denied for user 'root'@'localhost'
+(using password: YES)
+```
 
-### Lỗi thiếu bảng khôi phục mật khẩu
+Kiểm tra xem MySQL Workbench có đăng nhập được bằng mật khẩu hiện tại không.
 
-Chạy trong thư mục `Backend`:
+Sau đó mở file `.env` thực tế:
+
+```powershell
+notepad .env
+```
+
+Kiểm tra dòng:
+
+```dotenv
+DATABASE_URL=mysql+pymysql://root:MAT_KHAU_MYSQL@127.0.0.1:3306/job_portal
+```
+
+Thay `MAT_KHAU_MYSQL` bằng mật khẩu MySQL trên máy.
+
+Lưu lại và chạy:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from app.core.database import engine; c=engine.connect(); print('KET NOI MYSQL THANH CONG'); c.close()"
+```
+
+Không cần thay đổi mã nguồn Python chỉ vì nhập sai mật khẩu.
+
+### 13.2. Lỗi còn sử dụng mật khẩu mẫu
+
+Nếu xuất hiện:
+
+```text
+RuntimeError: Hay thay MAT_KHAU_MYSQL bang mat khau MySQL cua ban trong file .env.
+```
+
+Nghĩa là file `.env` đang chứa mật khẩu mẫu.
+
+Chạy:
+
+```powershell
+notepad .env
+```
+
+Nhập đúng mật khẩu MySQL và lưu lại.
+
+Không chỉnh sửa nhầm file `.env.example`.
+
+### 13.3. Lỗi đọc nhầm file cấu hình
+
+Kiểm tra các file cấu hình:
+
+```powershell
+Get-ChildItem -Force .env*
+```
+
+Kiểm tra đường dẫn dự án hiện tại:
+
+```powershell
+Get-Location
+```
+
+Kiểm tra module Backend đang được sử dụng:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import app.core.database as d; print(d.__file__); print(d.engine.url.render_as_string(hide_password=True))"
+```
+
+Nếu máy có nhiều bản sao dự án, cần đảm bảo file `.env` được sửa nằm trong cùng thư mục `Backend` đang chạy.
+
+### 13.4. Lỗi không nhận lệnh mysql
+
+Nếu xuất hiện:
+
+```text
+mysql is not recognized
+```
+
+Có thể MySQL chưa được thêm vào PATH.
+
+Có thể sử dụng MySQL Workbench thay cho lệnh mysql.
+
+Hoặc với MySQL Server 8.0 được cài đặt tại đường dẫn mặc định:
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p
+```
+
+Nhập mật khẩu MySQL khi được yêu cầu.
+
+Nếu hiển thị:
+
+```text
+Welcome to the MySQL monitor
+```
+
+Nghĩa là đăng nhập thành công.
+
+Nếu máy cài MySQL tại vị trí khác, thay đường dẫn bằng vị trí thực tế của `mysql.exe`.
+
+Cảnh báo `Unknown OS character set 'cp1258'` không phải lỗi đăng nhập nếu MySQL vẫn hiển thị màn hình kết nối thành công.
+
+### 13.5. Lỗi WinError 10013 hoặc WinError 10048
+
+Ví dụ:
+
+```text
+ERROR: [WinError 10013]
+An attempt was made to access a socket
+in a way forbidden by its access permissions.
+```
+
+Nguyên nhân có thể do Windows từ chối sử dụng cổng 8000, cổng bị dành riêng hoặc đang được chương trình khác sử dụng.
+
+**Cách khắc phục nhanh:**
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8001
+```
+
+Truy cập:
+
+http://127.0.0.1:8001
+
+Nếu cổng 8001 hoạt động thì có thể tiếp tục kiểm thử mà không cần sửa Frontend.
+
+**Kiểm tra cổng 8000:**
+
+```powershell
+netstat -ano | findstr :8000
+```
+
+Kiểm tra các cổng bị Windows dành riêng:
+
+```powershell
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+Nếu có Backend cũ đang chạy, dừng Backend đó bằng `Ctrl + C`.
+
+Không cần thay đổi mật khẩu MySQL hoặc sửa `database.py` vì lỗi cổng mạng.
+
+### 13.6. Lỗi thiếu bảng khôi phục mật khẩu
+
+Chạy:
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.setup_password_reset
 ```
 
-### Lỗi `No module named database`
+### 13.7. Lỗi thiếu bảng dữ liệu
 
-Bản cấu trúc mới sử dụng:
+Chạy:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.init_db
+```
+
+Nếu database đã có cấu trúc bảng từ phiên bản cũ, cần kiểm tra cấu trúc trước khi sử dụng.
+
+Không tự ý xóa database đang chứa dữ liệu quan trọng.
+
+### 13.8. Lỗi No module named
+
+Đảm bảo Terminal đang ở thư mục `Backend`.
+
+Cài lại các thư viện nếu cần:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Bản cấu trúc hiện tại sử dụng:
 
 ```python
 from app.core.database import engine
@@ -665,15 +1038,75 @@ Không sử dụng lệnh import cũ:
 from database import engine
 ```
 
-### Lỗi cổng 8000 đang được sử dụng
+### 13.9. Lỗi PowerShell không cho kích hoạt môi trường ảo
 
-Dừng máy chủ FastAPI cũ bằng `Ctrl + C`, sau đó khởi động lại.
+Không cần chạy `Activate.ps1`.
+
+Sử dụng trực tiếp:
+
+```powershell
+.\.venv\Scripts\python.exe
+```
+
+Các lệnh trong README đã sử dụng Python từ môi trường ảo nên không cần thay đổi Execution Policy.
+
+### 13.10. Lỗi không gửi được email
+
+Kiểm tra:
+
+1. Gmail đã bật xác minh 2 bước chưa.
+2. Đã tạo mật khẩu ứng dụng Google chưa.
+3. `SMTP_USER` có đúng địa chỉ Gmail không.
+4. `SMTP_PASSWORD` có đúng mật khẩu ứng dụng không.
+5. Đã lưu file `.env` chưa.
+6. Đã khởi động lại Backend chưa.
+7. Kiểm tra thư mục Spam của email nhận.
+
+Nếu chưa cấu hình SMTP, vẫn có thể kiểm thử các chức năng còn lại của website.
+
+### 13.11. Lỗi không hiển thị dữ liệu việc làm
+
+Kiểm tra kết nối MySQL:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from app.core.database import engine; c=engine.connect(); print('KET NOI MYSQL THANH CONG'); c.close()"
+```
+
+Kiểm tra đã nạp dữ liệu mẫu chưa:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.seed_demo
+```
+
+Kiểm tra API:
+
+http://127.0.0.1:8000/api/jobs
+
+Nếu sử dụng cổng 8001, thay `8000` bằng `8001`.
+
+Không mở trực tiếp file `frontend/index.html` từ File Explorer.
+
+### 13.12. Lỗi không chạy được môi trường .venv
+
+Nếu sao chép dự án từ máy khác, môi trường `.venv` cũ có thể không còn tương thích.
+
+Tạo lại môi trường ảo trên máy hiện tại và cài thư viện:
+
+```powershell
+py -m venv .venv
+```
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Nếu thư mục `.venv` cũ bị hỏng, có thể đổi tên thư mục đó trước khi tạo lại.
 
 ---
 
 ## 14. Cách chạy nhanh trong những lần sau
 
-Nếu đã cài môi trường Python và có database, không cần thực hiện lại các bước thiết lập ban đầu.
+Nếu đã cài môi trường Python, cấu hình `.env` và tạo database thì không cần thực hiện lại các bước thiết lập ban đầu.
 
 ### Bước 1: Bật MySQL Server
 
@@ -681,37 +1114,60 @@ Khởi động MySQL Server.
 
 ### Bước 2: Mở Terminal tại Backend
 
-Nếu Terminal đang ở thư mục `JobConnect`, chạy:
+Nếu Terminal đang ở thư mục gốc dự án:
 
 ```powershell
 cd Backend
 ```
 
-Nếu đã ở `Backend`, bỏ qua bước này.
+Nếu đã ở `Backend` thì bỏ qua bước này.
 
-### Bước 3: Chạy FastAPI
+### Bước 3: Kiểm tra kết nối MySQL nếu cần
+
+```powershell
+.\.venv\Scripts\python.exe -c "from app.core.database import engine; c=engine.connect(); print('KET NOI MYSQL THANH CONG'); c.close()"
+```
+
+### Bước 4: Chạy FastAPI
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-### Bước 4: Mở website
+Nếu gặp lỗi cổng 8000:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8001
+```
+
+### Bước 5: Mở website
+
+Cổng mặc định:
 
 http://127.0.0.1:8000
 
-> Không cần chạy `init_db`, `seed_demo` hoặc cài lại thư viện trong mỗi lần khởi động.
+Cổng dự phòng:
+
+http://127.0.0.1:8001
+
+> Không cần chạy lại `init_db`, `seed_demo`, sao chép `.env.example` hoặc cài lại thư viện trong mỗi lần khởi động.
 
 ---
 
 ## 15. Lưu ý dành cho người kiểm thử
 
+- Thực hiện các bước cài đặt theo thứ tự từ trên xuống dưới.
+- Đảm bảo MySQL Server đang hoạt động.
+- Chỉ chỉnh sửa thông tin cấu hình trong file `.env`.
+- Không chỉnh sửa nhầm `.env.example`.
+- Không đưa `.env` hoặc `.venv` lên GitHub.
+- Không sử dụng database chứa dữ liệu quan trọng.
 - Chỉ khóa hoặc xóa tài khoản thử nghiệm.
-- Không sử dụng database chứa dữ liệu quan trọng để kiểm thử thao tác xóa.
 - Không công khai mật khẩu MySQL hoặc Gmail.
-- Không đưa `.env` lên GitHub.
-- Không mở trực tiếp file `frontend/index.html` để kiểm thử bản tích hợp Backend.
-- Khi có lỗi, kiểm tra cả Console của trình duyệt và Terminal.
-- Một số chức năng CV có thể còn sử dụng dữ liệu trình duyệt.
+- Không cần sử dụng Live Server để chạy bản tích hợp.
+- Có thể sử dụng cổng 8001 nếu cổng 8000 gặp lỗi.
+- Khi thay đổi `.env`, cần khởi động lại Backend.
+- Khi có lỗi, kiểm tra Console của trình duyệt và Terminal.
 - Ghi lại lỗi để nhóm phát triển kiểm tra.
 
 ---
@@ -722,12 +1178,15 @@ Sau khi hoàn thành hướng dẫn, người kiểm thử có thể:
 
 - Chạy website JobConnect từ mã nguồn.
 - Kết nối Backend với MySQL.
+- Tạo bảng và dữ liệu kiểm thử.
 - Đăng ký và đăng nhập tài khoản.
 - Kiểm thử chức năng Candidate.
 - Kiểm thử chức năng Recruiter.
 - Kiểm thử chức năng Admin.
+- Kiểm thử ứng tuyển và xem CV PDF.
+- Kiểm thử chức năng quên mật khẩu qua Gmail SMTP.
 - Kiểm thử API bằng Swagger.
-- Ghi nhận lỗi trong quá trình sử dụng.
+- Xử lý các lỗi cấu hình và kết nối thường gặp.
 
 ---
 
