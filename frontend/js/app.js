@@ -625,7 +625,7 @@ jobs.push(...[
 // Phiên xác thực do Backend Python cấp, không dùng tài khoản giả trong localStorage.
 const key = 'jobconnect-server-ui-v1';
 let state = {user:null, accounts:[]};
-let page = 'jobs', applyId = null, cvs = [], db;
+let page = 'jobs', applyId = null, db;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function persist() { /* Backend MySQL là nguồn dữ liệu chính; không lưu mật khẩu trên trình duyệt. */ }
 function account() {
@@ -779,7 +779,7 @@ async function startApply(id) {
     const j = jobs.find(j => j.id === id);
     if (!j?.open) return toast('Tin tuyển dụng đã đóng.');
     if (account().applications.some(a => a.jobId === id)) return toast('Mỗi tin chỉ được ứng tuyển một lần, kể cả sau khi rút đơn.');
-    await loadCV();
+    const cvs = await loadCV();
     if (!cvs.length) {
         $('#detailDialog').close();
         changePage('cv');
@@ -851,12 +851,15 @@ async function cvStore(mode, action) {
     })
 }
 async function loadCV() {
+    const ownerId = state.user?.id;
+    if (!Number.isInteger(ownerId)) return [];
     const all = await cvStore('readonly', s => s.getAll());
-    cvs = all.filter(c => c.owner === state.user?.email)
+    if (ownerId !== state.user?.id) return [];
+    return all.filter(c => c.ownerId === ownerId);
 }
 async function renderCV() {
     try {
-        await loadCV();
+        const cvs = await loadCV();
         $('#cvList').innerHTML = cvs.map(c => `<div class="cv-row"><span>▤ ${esc(c.name)} <small>(${(c.size / 1024).toFixed(0)} KB)</small></span><button data-preview="${c.id}">Xem PDF</button><button data-delete="${c.id}">Xóa</button></div>`).join('') || empty('Bạn chưa tải lên CV nào.')
     } catch {
         toast('Không thể đọc CV trong trình duyệt.')
@@ -866,21 +869,25 @@ $('#cvInput').addEventListener('change', async e => {
     const f = e.target.files[0];
     e.target.value = '';
     if (!f || !candidate()) return;
+    const ownerId = state.user?.id;
+    if (!Number.isInteger(ownerId)) return toast('Vui lòng đăng nhập lại để tải CV.');
     if (!/\.pdf$/i.test(f.name) || f.type !== 'application/pdf') return toast('Chỉ chấp nhận file PDF.');
     if (!f.size || f.size > 5 * 1024 * 1024) return toast('File phải lớn hơn 0 và không vượt quá 5 MB.');
     try {
         const signature = new TextDecoder().decode(await f.slice(0, 5).arrayBuffer());
+        if (state.user?.id !== ownerId) return;
         if (signature !== '%PDF-') return toast('Nội dung file không có chữ ký PDF hợp lệ.');
         const id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
             ? crypto.randomUUID()
             : `cv-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         await cvStore('readwrite', s => s.put({
             id,
-            owner: state.user.email,
+            ownerId,
             name: f.name,
             size: f.size,
             blob: f
         }));
+        if (state.user?.id !== ownerId) return;
         await renderCV();
         toast('Tải CV PDF thành công!', 'success')
     } catch {
@@ -889,12 +896,15 @@ $('#cvInput').addEventListener('change', async e => {
 });
 $('#applyForm').addEventListener('submit', async e => {
  e.preventDefault();if(!candidate(applyLoginMessage))return;
- await loadCV();const cv=cvs.find(c=>c.id===$('#cvSelect').value);
+ const cvs=await loadCV();const cv=cvs.find(c=>c.id===$('#cvSelect').value);
  if(!cv)return toast('Vui lòng chọn CV PDF.');
  try{
-   await JobAPI.request('/api/applications',{method:'POST',body:{job_id:applyId}});
+   const body=new FormData();
+   body.set('job_id',applyId);
+   body.set('cv',cv.blob,cv.name);
+   await JobAPI.request('/api/applications',{method:'POST',body});
    await JobAPI.refresh();$('#applyDialog').close();changePage('applications');
-   toast('Nộp đơn thành công! CV vẫn đang lưu cục bộ trong trình duyệt.','success');
+   toast('Đã nộp đơn cùng CV PDF.','success');
  }catch(err){toast(err.message);}
 });
 // Xác thực qua Python API, không tạo tài khoản demo tại trình duyệt.
@@ -1021,7 +1031,7 @@ $('#userProfile').onclick = () => {
 };
 $('#logoutButton').onclick = async () => {
   JobAPI.clearToken();
-  state.user=null;state.accounts=[];page='jobs';cvs=[];
+  state.user=null;state.accounts=[];page='jobs';
   JobAPI.recruiterApps=[];JobAPI.adminUsers=[];
   jobs.splice(0,jobs.length);
   render();
@@ -1056,13 +1066,13 @@ document.addEventListener('click', async e => {
         }
         if (b.dataset.delete && candidate()) {
             if (!confirm('Xóa CV? Tên CV vẫn được giữ trong lịch sử ứng tuyển.')) return;
-            await loadCV();
+            const cvs = await loadCV();
             if (!cvs.some(c => c.id === b.dataset.delete)) return;
             await cvStore('readwrite', s => s.delete(b.dataset.delete));
             await renderCV()
         }
         if (b.dataset.preview && candidate()) {
-            await loadCV();
+            const cvs = await loadCV();
             const c = cvs.find(c => c.id === b.dataset.preview);
             if (c) {
                 const u = URL.createObjectURL(c.blob);

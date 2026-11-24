@@ -13,7 +13,7 @@ const publicJob = j => j && j.open && (j.status || 'approved') === 'approved';
 const ownedJobs = () => jobs.filter(j => j.owner === state.user?.email);
 const findJob = id => jobs.find(j => j.id === Number(id));
 const allAppsForRecruiter = () => (window.JobAPI?.recruiterApps||[]).map(a=>({
- id:a.id, jobId:a.job_id,date:a.applied_at,status:JobAPI.normalizeStatus(a.status),
+ id:a.id, jobId:a.job_id,date:a.applied_at,status:JobAPI.normalizeStatus(a.status),cvFilename:a.cv_filename,
  applicant:{name:a.candidate.name,email:a.candidate.email,profile:{skills:(a.candidate.skills||[]).join(', ')}}
 }));
 function requireRole(expected) {
@@ -94,7 +94,9 @@ function renderRecruiter() {
 function renderApplicantTable() {
   const term=(document.getElementById('applicantSearch')?.value||'').toLocaleLowerCase('vi'), filter=document.getElementById('applicantStatus')?.value||'',date=document.getElementById('applicantDate')?.value||'';
   const list=allAppsForRecruiter().filter(a=>(!filter||a.status===filter)&&(!date||a.date.slice(0,10)>=date)&&[a.applicant.name,a.applicant.profile?.skills||''].join(' ').toLocaleLowerCase('vi').includes(term));
-  document.getElementById('recruiterApplicants').innerHTML=`<div class="table-scroll"><table class="portal-table"><thead><tr><th>Ứng viên</th><th>Tin tuyển dụng</th><th>Ngày nộp</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead><tbody>${list.map(a=>`<tr><td>${safe(a.applicant.name)}<div class="inline-note">${safe(a.applicant.profile?.skills||'Chưa khai báo kỹ năng')}</div></td><td>${safe(findJob(a.jobId)?.title||'Không có tin')}</td><td>${new Date(a.date).toLocaleDateString('vi-VN')}</td><td>${safe(statuses[a.status]||a.status)}</td><td><select aria-label="Cập nhật trạng thái" data-app-status="${a.jobId}" data-app-email="${safe(a.applicant.email)}" ${['withdrawn','accepted','rejected'].includes(a.status)?'disabled':''}>${Object.entries(statuses).filter(([v])=>['reviewing','interviewed','accepted','rejected'].includes(v)).map(([v,t])=>`<option value="${v}" ${a.status===v?'selected':''}>${t}</option>`).join('')}</select></td></tr>`).join('')||'<tr><td colspan="5">Không có hồ sơ phù hợp.</td></tr>'}</tbody></table></div>`;
+  document.getElementById('recruiterApplicants').innerHTML=`<div class="table-scroll"><table class="portal-table"><thead><tr><th>Ứng viên</th><th>Tin tuyển dụng</th><th>Ngày nộp</th><th>CV</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead><tbody>${list.map(a=>`<tr><td>${safe(a.applicant.name)}<div class="inline-note">${safe(a.applicant.profile?.skills||'Chưa khai báo kỹ năng')}</div></td><td>${safe(findJob(a.jobId)?.title||'Không có tin')}</td><td>${new Date(a.date).toLocaleDateString('vi-VN')}</td><td>${a.cvFilename
+    ? `<button type="button" data-app-cv="${a.id}">Xem CV</button><div class="inline-note">${safe(a.cvFilename)}</div>`
+    : 'Chưa có CV đính kèm'}</td><td>${safe(statuses[a.status]||a.status)}</td><td><select aria-label="Cập nhật trạng thái" data-app-status="${a.jobId}" data-app-email="${safe(a.applicant.email)}" ${['withdrawn','accepted','rejected'].includes(a.status)?'disabled':''}>${a.status==='submitted'?'<option value="" selected disabled>Chọn trạng thái</option>':''}${Object.entries(statuses).filter(([v])=>['reviewing','interviewed','accepted','rejected'].includes(v)).map(([v,t])=>`<option value="${v}" ${a.status===v?'selected':''}>${t}</option>`).join('')}</select></td></tr>`).join('')||'<tr><td colspan="6">Không có hồ sơ phù hợp.</td></tr>'}</tbody></table></div>`;
 }
 const adminNav = () => `<div class="portal-actions"><button data-admin-tab="pending" class="${adminTab==='pending'?'active':''}">Kiểm duyệt tin</button><button data-admin-tab="users" class="${adminTab==='users'?'active':''}">Quản lý tài khoản</button></div>`;
 function filteredAdminUsers(){
@@ -209,6 +211,29 @@ function jobConfirm({title, message, action='Xác nhận', danger=false}) {
 // Lắng nghe nút bấm bổ sung. Những nút cũ trong app.js vẫn chạy bình thường.
 document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.appCv){
+  if(!requireRole('Recruiter'))return;
+  const preview=window.open('', '_blank');
+  if(!preview)return toast('Vui lòng cho phép mở tab mới để xem CV.');
+  preview.opener=null;
+  preview.document.body.textContent='Đang tải CV PDF…';
+  const token=JobAPI.getToken();
+  try{
+   const pdf=await JobAPI.request('/api/recruiter/applications/'+b.dataset.appCv+'/cv',{responseType:'blob'});
+   if(preview.closed)return;
+   if(token!==JobAPI.getToken()){
+    preview.close();
+    return;
+   }
+   const url=URL.createObjectURL(pdf);
+   preview.location.replace(url);
+   setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(err){
+   preview.close();
+   toast(err.message);
+  }
+  return;
+ }
  if(b.dataset.portal){const name=b.dataset.portal;routeTo(name==='candidate-profile'?'#/candidate/profile':name==='recruiter'?'#/employer/company':'#/admin/jobs');}
  if(b.dataset.page){const map={jobs:'#/jobs',saved:'#/saved',applications:'#/candidate/applications',cv:'#/candidate/cv'};if(map[b.dataset.page])routeTo(map[b.dataset.page]);}
  if(b.dataset.go){const map={jobs:'#/jobs',cv:'#/candidate/cv'};routeTo(map[b.dataset.go]||'#/jobs');}

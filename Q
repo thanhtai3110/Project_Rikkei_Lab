@@ -1,0 +1,210 @@
+[1mdiff --git a/frontend/index.html b/frontend/index.html[m
+[1mindex 6bea722..24722de 100644[m
+[1m--- a/frontend/index.html[m
+[1m+++ b/frontend/index.html[m
+[36m@@ -1,6 +1,6 @@[m
+ <!doctype html>[m
+ <html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JobConnect — Cơ hội mới mỗi ngày</title><link rel="stylesheet" href="css/style.css?v=company-logo-20261123"></head>[m
+[31m-<body>S[m
+[32m+[m[32m<body>[m
+ <header><a class="brand" href="index.html" title="Tải lại trang chủ JobConnect">💼 JobConnect<span>CAREER PLATFORM</span></a>[m
+ <nav aria-label="Điều hướng chính"><button data-page="saved">Việc đã lưu <b id="savedCount">0</b></button><button data-page="applications">Đơn ứng tuyển</button><button data-page="cv">Hồ sơ & CV</button><button data-portal="candidate-profile">Thông tin cá nhân</button><button data-portal="recruiter">Nhà tuyển dụng</button><button data-portal="admin">Quản trị</button></nav><div class="header-auth">[m
+   <button id="registerButton" type="button" class="header-register">Đăng ký</button>[m
+[36m@@ -69,4 +69,4 @@[m
+   </div>[m
+ </dialog>[m
+ <div id="toast" role="status" aria-live="polite"></div>[m
+[31m-<script src="js/theme.js?v=themefix20261111"></script><script src="js/app.js?v=company-logo-20261123"></script><script src="js/portal.js?v=company-logo-20261123"></script><script src="js/api-bridge.js?v=logout-20261122"></script></body></html>[m
+[32m+[m[32m<script src="js/theme.js?v=themefix20261111"></script><script src="js/app.js?v=cv-account-id-20261124"></script><script src="js/portal.js?v=application-cv-20261124"></script><script src="js/api-bridge.js?v=cv-account-id-20261124"></script></body></html>[m
+[1mdiff --git a/frontend/js/api-bridge.js b/frontend/js/api-bridge.js[m
+[1mindex 72c010e..35a6fdc 100644[m
+[1m--- a/frontend/js/api-bridge.js[m
+[1m+++ b/frontend/js/api-bridge.js[m
+[36m@@ -10,17 +10,23 @@[m [mwindow.JobAPI = {[m
+   localStorage.removeItem('jobconnect_jwt');[m
+   sessionStorage.removeItem('jobconnect_jwt');[m
+  },[m
+[31m- async request(path,{method='GET',body=null,auth=true}={}){[m
+[31m-  const headers={'Content-Type':'application/json'};[m
+[32m+[m[32m async request(path,{method='GET',body=null,auth=true,responseType='json'}={}){[m
+[32m+[m[32m  const form=body instanceof FormData;[m
+[32m+[m[32m  const headers=form?{}:{'Content-Type':'application/json'};[m
+   const token=this.getToken();[m
+   if(auth&&token)headers.Authorization='Bearer '+token;[m
+   let res;[m
+[31m-  try{res=await fetch(this.base+path,{method,headers,body:body===null?undefined:JSON.stringify(body)});}[m
+[32m+[m[32m  try{res=await fetch(this.base+path,{method,headers,body:form?body:body===null?undefined:JSON.stringify(body)});}[m
+   catch{throw new Error('Không kết nối được Backend Python. Hãy mở http://127.0.0.1:8000/docs và kiểm tra Uvicorn đang chạy.');}[m
+[32m+[m[32m  if(res.ok&&responseType==='blob')return res.blob();[m
+   const data=await res.json().catch(()=>null);[m
+   if(!res.ok){[m
+    if(auth&&token===this.getToken()&&(res.status===401||(path==='/auth/me'&&res.status===403))) this.clearToken();[m
+    const detail=data?.detail;[m
+[32m+[m[32m   if(path==='/api/applications'&&method==='POST'&&res.status===422&&Array.isArray(detail)[m
+[32m+[m[32m      &&detail.some(error=>error.type==='missing'&&['cv','job_id'].includes(error.loc?.at(-1)))){[m
+[32m+[m[32m    throw new Error('Máy chủ chưa nhận được mã tin hoặc CV PDF. Hãy tải lại trang, chọn CV và gửi lại.');[m
+[32m+[m[32m   }[m
+    throw new Error(typeof detail==='string'?detail:Array.isArray(detail)?detail.map(x=>x.msg).join('; '):'API lỗi '+res.status);[m
+   }[m
+   return data;[m
+[36m@@ -34,7 +40,7 @@[m [mwindow.JobAPI = {[m
+   }[m
+   const activeToken=this.getToken();[m
+   if(activeToken!==token&&(me||activeToken))return;[m
+[31m-  state.user=me?{email:me.email,name:me.full_name,role:({candidate:'Candidate',recruiter:'Recruiter',admin:'Admin'})[me.role]}:null;[m
+[32m+[m[32m  state.user=me?{id:me.user_id,email:me.email,name:me.full_name,role:({candidate:'Candidate',recruiter:'Recruiter',admin:'Admin'})[me.role]}:null;[m
+   const a=me?{name:me.full_name,email:me.email,role:state.user.role,saved:[],applications:[],profile:{},company:{}}:null;[m
+   state.accounts=a?[a]:[];this.recruiterApps=[];this.adminUsers=[];[m
+   const all=await this.request('/api/jobs');[m
+[36m@@ -45,7 +51,7 @@[m [mwindow.JobAPI = {[m
+    if(activeToken!==this.getToken())return;[m
+    a.saved=saved;[m
+    a.profile={...profile,skills:(profile.skills||[]).join(', ')};[m
+[31m-   a.applications=applications.map(x=>({id:x.id,jobId:x.job_id,date:x.applied_at,status:this.normalizeStatus(x.status),cvName:'CV lưu trên trình duyệt'}));[m
+[32m+[m[32m   a.applications=applications.map(x=>({id:x.id,jobId:x.job_id,date:x.applied_at,status:this.normalizeStatus(x.status),cvName:x.cv_filename||'Chưa có CV đính kèm'}));[m
+   }else if(me?.role==='recruiter'){[m
+    const [own,company,apps]=await Promise.all([this.request('/api/jobs/mine'),this.request('/company/profile'),this.request('/api/recruiter/applications')]);[m
+    if(activeToken!==this.getToken())return;[m
+[1mdiff --git a/frontend/js/app.js b/frontend/js/app.js[m
+[1mindex 15508d4..1f6aa45 100644[m
+[1m--- a/frontend/js/app.js[m
+[1m+++ b/frontend/js/app.js[m
+[36m@@ -625,7 +625,7 @@[m [mjobs.push(...[[m
+ // Phiên xác thực do Backend Python cấp, không dùng tài khoản giả trong localStorage.[m
+ const key = 'jobconnect-server-ui-v1';[m
+ let state = {user:null, accounts:[]};[m
+[31m-let page = 'jobs', applyId = null, cvs = [], db;[m
+[32m+[m[32mlet page = 'jobs', applyId = null, db;[m
+ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));[m
+ function persist() { /* Backend MySQL là nguồn dữ liệu chính; không lưu mật khẩu trên trình duyệt. */ }[m
+ function account() {[m
+[36m@@ -779,7 +779,7 @@[m [masync function startApply(id) {[m
+     const j = jobs.find(j => j.id === id);[m
+     if (!j?.open) return toast('Tin tuyển dụng đã đóng.');[m
+     if (account().applications.some(a => a.jobId === id)) return toast('Mỗi tin chỉ được ứng tuyển một lần, kể cả sau khi rút đơn.');[m
+[31m-    await loadCV();[m
+[32m+[m[32m    const cvs = await loadCV();[m
+     if (!cvs.length) {[m
+         $('#detailDialog').close();[m
+         changePage('cv');[m
+[36m@@ -851,12 +851,15 @@[m [masync function cvStore(mode, action) {[m
+     })[m
+ }[m
+ async function loadCV() {[m
+[32m+[m[32m    const ownerId = state.user?.id;[m
+[32m+[m[32m    if (!Number.isInteger(ownerId)) return [];[m
+     const all = await cvStore('readonly', s => s.getAll());[m
+[31m-    cvs = all.filter(c => c.owner === state.user?.email)[m
+[32m+[m[32m    if (ownerId !== state.user?.id) return [];[m
+[32m+[m[32m    return all.filter(c => c.ownerId === ownerId);[m
+ }[m
+ async function renderCV() {[m
+     try {[m
+[31m-        await loadCV();[m
+[32m+[m[32m        const cvs = await loadCV();[m
+         $('#cvList').innerHTML = cvs.map(c => `<div class="cv-row"><span>▤ ${esc(c.name)} <small>(${(c.size / 1024).toFixed(0)} KB)</small></span><button data-preview="${c.id}">Xem PDF</button><button data-delete="${c.id}">Xóa</button></div>`).join('') || empty('Bạn chưa tải lên CV nào.')[m
+     } catch {[m
+         toast('Không thể đọc CV trong trình duyệt.')[m
+[36m@@ -866,21 +869,25 @@[m [m$('#cvInput').addEventListener('change', async e => {[m
+     const f = e.target.files[0];[m
+     e.target.value = '';[m
+     if (!f || !candidate()) return;[m
+[32m+[m[32m    const ownerId = state.user?.id;[m
+[32m+[m[32m    if (!Number.isInteger(ownerId)) return toast('Vui lòng đăng nhập lại để tải CV.');[m
+     if (!/\.pdf$/i.test(f.name) || f.type !== 'application/pdf') return toast('Chỉ chấp nhận file PDF.');[m
+     if (!f.size || f.size > 5 * 1024 * 1024) return toast('File phải lớn hơn 0 và không vượt quá 5 MB.');[m
+     try {[m
+         const signature = new TextDecoder().decode(await f.slice(0, 5).arrayBuffer());[m
+[32m+[m[32m        if (state.user?.id !== ownerId) return;[m
+         if (signature !== '%PDF-') return toast('Nội dung file không có chữ ký PDF hợp lệ.');[m
+         const id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')[m
+             ? crypto.randomUUID()[m
+             : `cv-${Date.now()}-${Math.random().toString(36).slice(2)}`;[m
+         await cvStore('readwrite', s => s.put({[m
+             id,[m
+[31m-            owner: state.user.email,[m
+[32m+[m[32m            ownerId,[m
+             name: f.name,[m
+             size: f.size,[m
+             blob: f[m
+         }));[m
+[32m+[m[32m        if (state.user?.id !== ownerId) return;[m
+         await renderCV();[m
+         toast('Tải CV PDF thành công!', 'success')[m
+     } catch {[m
+[36m@@ -889,12 +896,15 @@[m [m$('#cvInput').addEventListener('change', async e => {[m
+ });[m
+ $('#applyForm').addEventListener('submit', async e => {[m
+  e.preventDefault();if(!candidate(applyLoginMessage))return;[m
+[31m- await loadCV();const cv=cvs.find(c=>c.id===$('#cvSelect').value);[m
+[32m+[m[32m const cvs=await loadCV();const cv=cvs.find(c=>c.id===$('#cvSelect').value);[m
+  if(!cv)return toast('Vui lòng chọn CV PDF.');[m
+  try{[m
+[31m-   await JobAPI.request('/api/applications',{method:'POST',body:{job_id:applyId}});[m
+[32m+[m[32m   const body=new FormData();[m
+[32m+[m[32m   body.set('job_id',applyId);[m
+[32m+[m[32m   body.set('cv',cv.blob,cv.name);[m
+[32m+[m[32m   await JobAPI.request('/api/applications',{method:'POST',body});[m
+    await JobAPI.refresh();$('#applyDialog').close();changePage('applications');[m
+[31m-   toast('Nộp đơn thành công! CV vẫn đang lưu cục bộ trong trình duyệt.','success');[m
+[32m+[m[32m   toast('Đã nộp đơn cùng CV PDF.','success');[m
+  }catch(err){toast(err.message);}[m
+ });[m
+ // Xác thực qua Python API, không tạo tài khoản demo tại trình duyệt.[m
+[36m@@ -1021,7 +1031,7 @@[m [m$('#userProfile').onclick = () => {[m
+ };[m
+ $('#logoutButton').onclick = async () => {[m
+   JobAPI.clearToken();[m
+[31m-  state.user=null;state.accounts=[];page='jobs';cvs=[];[m
+[32m+[m[32m  state.user=null;state.accounts=[];page='jobs';[m
+   JobAPI.recruiterApps=[];JobAPI.adminUsers=[];[m
+   jobs.splice(0,jobs.length);[m
+   render();[m
+[36m@@ -1056,13 +1066,13 @@[m [mdocument.addEventListener('click', async e => {[m
+         }[m
+         if (b.dataset.delete && candidate()) {[m
+             if (!confirm('Xóa CV? Tên CV vẫn được giữ trong lịch sử ứng tuyển.')) return;[m
+[31m-            await loadCV();[m
+[32m+[m[32m            const cvs = await loadCV();[m
+             if (!cvs.some(c => c.id === b.dataset.delete)) return;[m
+             await cvStore('readwrite', s => s.delete(b.dataset.delete));[m
+             await renderCV()[m
+         }[m
+         if (b.dataset.preview && candidate()) {[m
+[31m-            await loadCV();[m
+[32m+[m[32m            const cvs = await loadCV();[m
+             const c = cvs.find(c => c.id === b.dataset.preview);[m
+             if (c) {[m
+                 const u = URL.createObjectURL(c.blob);[m
+[1mdiff --git a/frontend/js/portal.js b/frontend/js/portal.js[m
+[1mindex 7598226..7567120 100644[m
+[1m--- a/frontend/js/portal.js[m
+[1m+++ b/frontend/js/portal.js[m
+[36m@@ -13,7 +13,7 @@[m [mconst publicJob = j => j && j.open && (j.status || 'approved') === 'approved';[m
+ const ownedJobs = () => jobs.filter(j => j.owner === state.user?.email);[m
+ const findJob = id => jobs.find(j => j.id === Number(id));[m
+ const allAppsForRecruiter = () => (window.JobAPI?.recruiterApps||[]).map(a=>({[m
+[31m- id:a.id, jobId:a.job_id,date:a.applied_at,status:JobAPI.normalizeStatus(a.status),[m
+[32m+[m[32m id:a.id, jobId:a.job_id,date:a.applied_at,status:JobAPI.normalizeStatus(a.status),cvFilename:a.cv_filename,[m
+  applicant:{name:a.candidate.name,email:a.candidate.email,profile:{skills:(a.candidate.skills||[]).join(', ')}}[m
+ }));[m
+ function requireRole(expected) {[m
+[36m@@ -94,7 +94,9 @@[m [mfunction renderRecruiter() {[m
+ function renderApplicantTable() {[m
+   const term=(document.getElementById('applicantSearch')?.value||'').toLocaleLowerCase('vi'), filter=document.getElementById('applicantStatus')?.value||'',date=document.getElementById('applicantDate')?.value||'';[m
+   const list=allAppsForRecruiter().filter(a=>(!filter||a.status===filter)&&(!date||a.date.slice(0,10)>=date)&&[a.applicant.name,a.applicant.profile?.skills||''].join(' ').toLocaleLowerCase('vi').includes(term));[m
+[31m-  document.getElementById('recruiterApplicants').innerHTML=`<div class="table-scroll"><table class="portal-table"><thead><tr><th>Ứng viên</th><th>Tin tuyển dụng</th><th>Ngày nộp</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead><tbody>${list.map(a=>`<tr><td>${safe(a.applicant.name)}<div class="inline-note">${safe(a.applicant.profile?.skills||'Chưa khai báo kỹ năng')}</div></td><td>${safe(findJob(a.jobId)?.title||'Không có tin')}</td><td>${new Date(a.date).toLocaleDateString('vi-VN')}</td><td>${safe(statuses[a.status]||a.status)}</td><td><select aria-label="Cập nhật trạng thái" data-app-status="${a.jobId}" data-app-email="${safe(a.applicant.email)}" ${['withdrawn','accepted','rejected'].includes(a.status)?'disabled':''}>${Object.entries(statuses).filter(([v])=>['reviewing','interviewed','accepted','rejected'].includes(v)).map(([v,t])=>`<option value="${v}" ${a.status===v?'selected':''}>${t}</option>`).join('')}</select></td></tr>`).join('')||'<tr><td colspan="5">Không có hồ sơ phù hợp.</td></tr>'}</tbody></table></div>`;[m
+[32m+[m[32m  document.getElementById('recruiterApplicants').innerHTML=`<div class="table-scroll"><table class="portal-table"><thead><tr><th>Ứng viên</th><th>Tin tuyển dụng</th><th>Ngày nộp</th><th>CV</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead><tbody>${list.map(a=>`<tr><td>${safe(a.applicant.name)}<div class="inline-note">${safe(a.applicant.profile?.skills||'Chưa khai báo kỹ năng')}</div></td><td>${safe(findJob(a.jobId)?.title||'Không có tin')}</td><td>${new Date(a.date).toLocaleDateString('vi-VN')}</td><td>${a.cvFilename[m
+[32m+[m[32m    ? `<button type="button" data-app-cv="${a.id}">Xem CV</button><div class="inline-note">${safe(a.cvFilename)}</div>`[m
+[32m+[m[32m    : 'Chưa có CV đính kèm'}</td><td>${safe(statuses[a.status]||a.status)}</td><td><select aria-label="Cập nhật trạng thái" data-app-status="${a.jobId}" data-app-email="${safe(a.applicant.email)}" ${['withdrawn','accepted','rejected'].includes(a.status)?'disabled':''}>${a.status==='submitted'?'<option value="" selected disabled>Chọn trạng thái</option>':''}${Object.entries(statuses).filter(([v])=>['reviewing','interviewed','accepted','rejected'].includes(v)).map(([v,t])=>`<option value="${v}" ${a.status===v?'selected':''}>${t}</option>`).join('')}</select></td></tr>`).join('')||'<tr><td colspan="6">Không có hồ sơ phù hợp.</td></tr>'}</tbody></table></div>`;[m
+ }[m
+ const adminNav = () => `<div class="portal-actions"><button data-admin-tab="pending" class="${adminTab==='pending'?'active':''}">Kiểm duyệt tin</button><button data-admin-tab="users" class="${adminTab==='users'?'active':''}">Quản lý tài khoản</button></div>`;[m
+ function filteredAdminUsers(){[m
+[36m@@ -209,6 +211,29 @@[m [mfunction jobConfirm({title, message, action='Xác nhận', danger=false}) {[m
+ // Lắng nghe nút bấm bổ sung. Những nút cũ trong app.js vẫn chạy bình thường.[m
+ document.addEventListener('click',async e=>{[m
+  const b=e.target.closest('button');if(!b)return;[m
+[32m+[m[32m if(b.dataset.appCv){[m
+[32m+[m[32m  if(!requireRole('Recruiter'))return;[m
+[32m+[m[32m  const preview=window.open('', '_blank');[m
+[32m+[m[32m  i
