@@ -1,4 +1,6 @@
 from fastapi import Depends, HTTPException, Query
+from fastapi.responses import Response
+from urllib.parse import quote
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, or_, select, String, delete
 from sqlalchemy.exc import IntegrityError
@@ -8,7 +10,7 @@ from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from app.core.database import get_db
-from app.models.entities import Application, Job, User, SavedJob, PasswordResetCode
+from app.models.entities import Application, ApplicationCV, Job, User, SavedJob, PasswordResetCode
 from app.schemas.contracts import *
 from app.core.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.dependencies import create_access_token, get_current_user, get_current_candidate, get_current_recruiter, get_current_admin
@@ -208,10 +210,52 @@ def close_job(id:int,db:Session=Depends(get_db),user:User=Depends(get_current_re
     job.open=False;job.status='closed';db.commit();db.refresh(job);return job
 
 
-@router.get('/api/recruiter/applications')
-def recruiter_applications(db:Session=Depends(get_db),user:User=Depends(get_current_recruiter)):
-    rows=db.execute(select(Application,Job,User).join(Job,Application.job_id==Job.job_id).join(User,Application.candidate_id==User.user_id).where(Job.recruiter_id==user.user_id)).all()
-    return [{'id':a.application_id,'job_id':a.job_id,'status':a.status,'applied_at':a.applied_at.isoformat(),
-      'candidate':{'name':u.full_name,'email':u.email,'skills':u.skills or []}} for a,j,u in rows]
+@router.get("/api/recruiter/applications")
+def recruiter_applications(db: Session = Depends(get_db), user: User = Depends(get_current_recruiter)):
+    statement = (
+        select(Application, User, ApplicationCV.filename)
+        .join(Job, Application.job_id == Job.job_id)
+        .join(User, Application.candidate_id == User.user_id)
+        .outerjoin(ApplicationCV, ApplicationCV.application_id == Application.application_id)
+        .where(Job.recruiter_id == user.user_id)
+    )
+    return [
+        {
+            "id": application.application_id,
+            "job_id": application.job_id,
+            "status": application.status,
+            "applied_at": application.applied_at.isoformat(),
+            "cv_filename": filename,
+            "candidate": {"name": candidate.full_name, "email": candidate.email, "skills": candidate.skills or []},
+        }
+        for application, candidate, filename in db.execute(statement)
+    ]
+
+
+@router.get("/api/recruiter/applications/{application_id}/cv", response_class=Response)
+def get_application_cv(
+    application_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_recruiter),
+) -> Response:
+    statement = (
+        select(ApplicationCV)
+        .join(Application, ApplicationCV.application_id == Application.application_id)
+        .join(Job, Application.job_id == Job.job_id)
+        .where(Application.application_id == application_id, Job.recruiter_id == user.user_id)
+    )
+    cv = db.execute(statement).scalar_one_or_none()
+    if cv is None:
+        raise HTTPException(404, "Không tìm thấy CV của đơn ứng tuyển")
+
+    return Response(
+        content=cv.content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"inline; filename*=UTF-8''{quote(cv.filename, safe='')}",
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 

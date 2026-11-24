@@ -9,12 +9,14 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     JSON,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
     func,
     select,
 )
+from sqlalchemy.dialects.mysql import MEDIUMBLOB
 from sqlalchemy.orm import column_property
 from app.core.database import Base
 
@@ -90,6 +92,14 @@ class Application(Base):
     )
     status = Column(String(20), nullable=False, default="pending")
     applied_at = Column(DateTime, nullable=False, server_default=func.now())
+
+class ApplicationCV(Base):
+    __tablename__ = "application_cvs"
+
+    application_id = Column(Integer, ForeignKey("applications.application_id", ondelete="CASCADE"), primary_key=True)
+    filename = Column(String(255), nullable=False)
+    content = Column(LargeBinary().with_variant(MEDIUMBLOB(), "mysql", "mariadb"), nullable=False)
+
 
 class SavedJob(Base):
     __tablename__ = 'saved_jobs'

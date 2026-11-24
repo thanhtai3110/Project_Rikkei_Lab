@@ -23,8 +23,9 @@ app.include_router(password_reset_router)
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
 # API phải được đăng ký trước static mount.
+@app.get("/index.html", include_in_schema=False)
 @app.get("/", include_in_schema=False)
 def home():
-    return FileResponse(FRONTEND_DIR / "index.html")
+    return FileResponse(FRONTEND_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
 app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
