@@ -133,12 +133,6 @@ class JobResponse(BaseModel):
     status: str
 
 
-class ApplicationCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    job_id: int = Field(gt=0)
-
-
 class ApplicationStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -153,6 +147,10 @@ class ApplicationResponse(BaseModel):
     job_id: int
     status: str
     applied_at: datetime
+
+
+class CandidateApplicationResponse(ApplicationResponse):
+    cv_filename: str | None
 
 
 # API danh sách tài khoản: chỉ trả thông tin cần thiết cho dashboard Admin.
